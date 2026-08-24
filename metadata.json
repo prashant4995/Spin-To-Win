@@ -1,0 +1,7 @@
+{
+  "name": "Lucky Spin & Win",
+  "description": "Interactive tablet spin-to-win app for restaurant food festivals with dish selection, animated lucky wheel, and reward claim.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
+
