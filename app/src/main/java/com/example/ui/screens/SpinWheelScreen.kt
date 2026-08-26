@@ -1,7 +1,6 @@
 package com.example.ui.screens
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -31,13 +30,14 @@ import androidx.compose.material.icons.filled.Casino
 import androidx.compose.material.icons.filled.Celebration
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Redo
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.VolumeOff
 import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Surface
@@ -49,10 +49,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameMillis
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.example.audio.LocalFestiveSoundManager
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
@@ -63,9 +62,14 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.audio.LocalFestiveSoundManager
 import com.example.model.Dish
 import com.example.model.SectorType
 import com.example.model.WheelSector
+import com.example.ui.animation.WheelPhysicsEngine
+import com.example.ui.animation.WheelPhysicsState
+import com.example.ui.animation.WheelSpinPhase
 import com.example.ui.components.DishIllustration
 import com.example.ui.components.LuckyWheel
 import com.example.ui.components.MarigoldGarland
@@ -83,6 +87,7 @@ import com.example.ui.theme.ArtisticMaroonSurface
 import com.example.ui.theme.FestiveCardBorder
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlin.math.sin
 
 @Composable
 fun SpinWheelScreen(
@@ -101,15 +106,33 @@ fun SpinWheelScreen(
 ) {
     val coroutineScope = rememberCoroutineScope()
     val soundManager = LocalFestiveSoundManager.current
-    val wheelAnimatable = remember { Animatable(currentRotationAngle) }
     val scrollState = rememberScrollState()
+
+    var physicsState by remember {
+        mutableStateOf(
+            WheelPhysicsState(
+                currentAngle = currentRotationAngle,
+                landedSectorIndex = WheelPhysicsEngine.calculateLandedSectorIndex(currentRotationAngle, sectors.size),
+                landedSector = sectors.getOrNull(WheelPhysicsEngine.calculateLandedSectorIndex(currentRotationAngle, sectors.size))
+            )
+        )
+    }
 
     var confettiTriggerKey by remember { mutableStateOf<Long?>(null) }
     var isWinCelebrationVisible by remember { mutableStateOf(false) }
 
     LaunchedEffect(currentRotationAngle) {
         if (!isSpinning) {
-            wheelAnimatable.snapTo(currentRotationAngle)
+            val landedIdx = WheelPhysicsEngine.calculateLandedSectorIndex(currentRotationAngle, sectors.size)
+            physicsState = physicsState.copy(
+                currentAngle = currentRotationAngle,
+                angularVelocityDegPerSec = 0f,
+                normalizedVelocity = 0f,
+                pointerDeflectionAngle = 0f,
+                phase = WheelSpinPhase.IDLE,
+                landedSectorIndex = landedIdx,
+                landedSector = sectors.getOrNull(landedIdx)
+            )
         }
     }
 
@@ -118,28 +141,91 @@ fun SpinWheelScreen(
             isWinCelebrationVisible = false
             onStartSpin { targetAngle ->
                 coroutineScope.launch {
-                    wheelAnimatable.animateTo(
-                        targetValue = targetAngle,
-                        animationSpec = tween(
-                            durationMillis = 4200,
-                            easing = FastOutSlowInEasing
+                    val startAngle = physicsState.currentAngle
+                    val totalDelta = targetAngle - startAngle
+                    val durationMs = WheelPhysicsEngine.DEFAULT_SPIN_DURATION_MS
+                    val startTime = System.currentTimeMillis()
+                    var lastTickTime = 0L
+
+                    soundManager?.playSpinSound()
+
+                    while (true) {
+                        val elapsed = System.currentTimeMillis() - startTime
+                        val rawProgress = (elapsed.toFloat() / durationMs).coerceIn(0f, 1f)
+                        val physicsProgress = WheelPhysicsEngine.calculatePhysicsProgress(rawProgress)
+                        val currentAngle = startAngle + totalDelta * physicsProgress
+                        val velocity = WheelPhysicsEngine.calculateAngularVelocity(rawProgress, totalDelta, durationMs)
+                        val (pointerDeflection, isPegCrossing) = WheelPhysicsEngine.calculatePointerDeflection(currentAngle, velocity)
+                        val landedIndex = WheelPhysicsEngine.calculateLandedSectorIndex(currentAngle, sectors.size)
+                        val landedSector = sectors.getOrNull(landedIndex) ?: sectors[0]
+
+                        val phase = when {
+                            rawProgress < WheelPhysicsEngine.PHASE_ACCEL_END -> WheelSpinPhase.ACCELERATION
+                            rawProgress < WheelPhysicsEngine.PHASE_DECEL_END -> WheelSpinPhase.DECELERATION
+                            rawProgress < 1.0f -> WheelSpinPhase.FINAL_LANDING
+                            else -> WheelSpinPhase.LANDED
+                        }
+
+                        val landingPulseAlpha = if (phase == WheelSpinPhase.FINAL_LANDING || phase == WheelSpinPhase.LANDED) {
+                            val t = ((elapsed - durationMs * WheelPhysicsEngine.PHASE_DECEL_END) / 1000f)
+                            (0.5f + 0.5f * sin(t * 8f)).toFloat().coerceIn(0f, 1f)
+                        } else 0f
+
+                        physicsState = WheelPhysicsState(
+                            currentAngle = currentAngle,
+                            angularVelocityDegPerSec = velocity,
+                            normalizedVelocity = (velocity / 1800f).coerceIn(0f, 1f),
+                            phase = phase,
+                            pointerDeflectionAngle = pointerDeflection,
+                            isPegCrossing = isPegCrossing,
+                            progress = rawProgress,
+                            landedSectorIndex = landedIndex,
+                            landedSector = landedSector,
+                            isLandedPrizeWin = landedSector.type == SectorType.WIN,
+                            landingPulseAlpha = landingPulseAlpha
                         )
+
+                        // Dynamic ratchet tick audio playback during peg crossings
+                        val now = System.currentTimeMillis()
+                        if (isPegCrossing && (now - lastTickTime > 35L)) {
+                            lastTickTime = now
+                            val pitch = 0.85f + (velocity / 1600f) * 0.65f
+                            val vol = 0.3f + (velocity / 1600f) * 0.35f
+                            soundManager?.playRatchetTick(pitch, vol)
+                        }
+
+                        if (rawProgress >= 1f) {
+                            break
+                        }
+
+                        withFrameMillis { /* next frame */ }
+                    }
+
+                    // Precise settling at target angle
+                    val finalLandedIndex = WheelPhysicsEngine.calculateLandedSectorIndex(targetAngle, sectors.size)
+                    val finalSector = sectors.getOrNull(finalLandedIndex) ?: sectors[0]
+                    val isWin = finalSector.type == SectorType.WIN
+
+                    physicsState = physicsState.copy(
+                        currentAngle = targetAngle,
+                        angularVelocityDegPerSec = 0f,
+                        normalizedVelocity = 0f,
+                        pointerDeflectionAngle = 0f,
+                        phase = WheelSpinPhase.LANDED,
+                        landedSectorIndex = finalLandedIndex,
+                        landedSector = finalSector,
+                        isLandedPrizeWin = isWin,
+                        landingPulseAlpha = 1f
                     )
 
-                    // Calculate landed sector accurately
-                    val normalizedAngle = (270f - (targetAngle % 360f) + 360f) % 360f
-                    val sectorIndex = ((normalizedAngle / 90f).toInt()) % sectors.size
-                    val landedSector = sectors.getOrNull(sectorIndex) ?: sectors[0]
-                    val isWin = landedSector.type == SectorType.WIN
-
                     if (isWin) {
-                        // Automatically trigger particle confetti on the spin wheel screen
                         confettiTriggerKey = System.currentTimeMillis()
                         isWinCelebrationVisible = true
                         soundManager?.playWinChime()
-
-                        // Allow the celebratory particle cascade to explode over the wheel
-                        delay(2600)
+                        delay(2400)
+                    } else {
+                        soundManager?.playTryAgainSound()
+                        delay(1200)
                     }
 
                     onSpinAnimationFinished(targetAngle)
@@ -283,6 +369,73 @@ fun SpinWheelScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
+                // Real-time Physics Engine Status Pill
+                Surface(
+                    shape = RoundedCornerShape(20.dp),
+                    color = when (physicsState.phase) {
+                        WheelSpinPhase.IDLE -> ArtisticMaroonDark
+                        WheelSpinPhase.ACCELERATION -> Color(0xFF4A1A00)
+                        WheelSpinPhase.DECELERATION -> Color(0xFF3B1010)
+                        WheelSpinPhase.FINAL_LANDING -> Color(0xFF5A3000)
+                        WheelSpinPhase.LANDED -> if (physicsState.isLandedPrizeWin) Color(0xFF422800) else ArtisticMaroonDark
+                    },
+                    border = BorderStroke(
+                        1.2.dp,
+                        when (physicsState.phase) {
+                            WheelSpinPhase.IDLE -> ArtisticAmberSubtle
+                            WheelSpinPhase.ACCELERATION -> Color(0xFFFFB300)
+                            WheelSpinPhase.DECELERATION -> ArtisticAmberGold
+                            WheelSpinPhase.FINAL_LANDING -> Color(0xFFFFD54F)
+                            WheelSpinPhase.LANDED -> if (physicsState.isLandedPrizeWin) ArtisticAmberGold else ArtisticAmberSubtle
+                        }
+                    ),
+                    modifier = Modifier.testTag("physics_phase_pill")
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(
+                            imageVector = when (physicsState.phase) {
+                                WheelSpinPhase.IDLE -> Icons.Default.Casino
+                                WheelSpinPhase.ACCELERATION -> Icons.Default.PlayArrow
+                                WheelSpinPhase.DECELERATION -> Icons.Default.Refresh
+                                WheelSpinPhase.FINAL_LANDING -> Icons.Default.Star
+                                WheelSpinPhase.LANDED -> if (physicsState.isLandedPrizeWin) Icons.Default.Celebration else Icons.Default.Casino
+                            },
+                            contentDescription = "Physics Status",
+                            tint = when (physicsState.phase) {
+                                WheelSpinPhase.IDLE -> ArtisticCreamSub
+                                WheelSpinPhase.ACCELERATION -> Color(0xFFFFB300)
+                                WheelSpinPhase.DECELERATION -> ArtisticAmberGold
+                                WheelSpinPhase.FINAL_LANDING -> Color(0xFFFFD54F)
+                                WheelSpinPhase.LANDED -> if (physicsState.isLandedPrizeWin) Color(0xFFFFD54F) else ArtisticCreamSub
+                            },
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Text(
+                            text = when (physicsState.phase) {
+                                WheelSpinPhase.IDLE -> "READY TO SPIN • 3D PHYSICS"
+                                WheelSpinPhase.ACCELERATION -> "TORQUE BUILDUP • ACCELERATING"
+                                WheelSpinPhase.DECELERATION -> "VISCOUS FRICTION • ${(physicsState.angularVelocityDegPerSec).toInt()}°/s"
+                                WheelSpinPhase.FINAL_LANDING -> "HARMONIC DETENT • LOCKING PRIZE..."
+                                WheelSpinPhase.LANDED -> if (physicsState.isLandedPrizeWin) "JACKPOT LANDED • ${physicsState.landedSector?.subText ?: "WIN"}" else "LANDED • ${physicsState.landedSector?.subText ?: "TRY AGAIN"}"
+                            },
+                            color = when (physicsState.phase) {
+                                WheelSpinPhase.IDLE -> ArtisticCreamSub
+                                WheelSpinPhase.ACCELERATION -> Color(0xFFFFE082)
+                                WheelSpinPhase.DECELERATION -> ArtisticAmberGold
+                                WheelSpinPhase.FINAL_LANDING -> Color(0xFFFFF9C4)
+                                WheelSpinPhase.LANDED -> if (physicsState.isLandedPrizeWin) Color(0xFFFFF9C4) else ArtisticCream
+                            },
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 0.6.sp
+                        )
+                    }
+                }
+
                 // 3D Lucky Wheel Centerpiece
                 Box(
                     modifier = Modifier
@@ -293,8 +446,13 @@ fun SpinWheelScreen(
                     LuckyWheel(
                         selectedDish = selectedDish,
                         sectors = sectors,
-                        currentRotationAngle = wheelAnimatable.value,
+                        currentRotationAngle = physicsState.currentAngle,
                         isSpinning = isSpinning,
+                        pointerDeflectionAngle = physicsState.pointerDeflectionAngle,
+                        phase = physicsState.phase,
+                        angularVelocity = physicsState.angularVelocityDegPerSec,
+                        landedSectorIndex = physicsState.landedSectorIndex,
+                        landingPulseAlpha = physicsState.landingPulseAlpha,
                         onSpinClick = triggerSpin,
                         onSpinComplete = onSpinAnimationFinished,
                         modifier = Modifier.fillMaxSize()
@@ -369,7 +527,7 @@ fun SpinWheelScreen(
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "3D Physics Engine: 2 Win Sectors • 2 Retry Sectors • Pure Random Deceleration",
+                            text = "Realistic Physics: Progressive Torque • Viscous Decay • Spring Detent Settling",
                             color = ArtisticCreamSub,
                             fontSize = 10.5.sp
                         )

@@ -1,5 +1,6 @@
 package com.example
 
+import android.app.Application
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -10,12 +11,14 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -42,12 +45,22 @@ class MainActivity : ComponentActivity() {
 
             CompositionLocalProvider(LocalFestiveSoundManager provides soundManager) {
                 MyApplicationTheme {
+                    val application = context.applicationContext as? Application ?: application
+                    val viewModel: WheelViewModel = viewModel(
+                        factory = WheelViewModel.Factory(application)
+                    )
                     Scaffold(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .safeDrawingPadding()
+                        modifier = Modifier.fillMaxSize(),
+                        contentWindowInsets = WindowInsets(0, 0, 0, 0)
                     ) { innerPadding ->
-                        LuckySpinApp()
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(innerPadding)
+                                .safeDrawingPadding()
+                        ) {
+                            LuckySpinApp(viewModel = viewModel)
+                        }
                     }
                 }
             }
@@ -56,7 +69,11 @@ class MainActivity : ComponentActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
-        FestiveSoundManager.getInstance(this).stopSpinSound()
+        try {
+            FestiveSoundManager.getInstance(this).stopSpinSound()
+        } catch (e: Exception) {
+            // Safe cleanup
+        }
     }
 }
 

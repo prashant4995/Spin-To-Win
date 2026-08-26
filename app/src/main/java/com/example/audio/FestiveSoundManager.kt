@@ -231,6 +231,23 @@ class FestiveSoundManager private constructor(private val context: Context) {
         }
     }
 
+    /**
+     * Plays an individual dynamic ratchet peg tick with variable pitch and volume.
+     */
+    fun playRatchetTick(pitch: Float = 1.0f, volume: Float = 0.5f) {
+        if (_isMuted.value) return
+        try {
+            val sp = soundPool ?: return
+            if (clickSoundId != 0) {
+                val clampedPitch = pitch.coerceIn(0.6f, 1.8f)
+                val clampedVol = volume.coerceIn(0.1f, 0.9f)
+                sp.play(clickSoundId, clampedVol, clampedVol, 1, 0, clampedPitch)
+            }
+        } catch (e: Exception) {
+            // Non-critical sound tick
+        }
+    }
+
     fun release() {
         try {
             stopSpinSound()

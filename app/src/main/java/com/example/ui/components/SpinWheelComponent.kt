@@ -25,7 +25,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -37,7 +36,6 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.graphicsLayer
@@ -50,6 +48,8 @@ import androidx.compose.ui.unit.sp
 import com.example.model.Dish
 import com.example.model.SectorType
 import com.example.model.WheelSector
+import com.example.ui.animation.WheelPhysicsEngine
+import com.example.ui.animation.WheelSpinPhase
 import com.example.ui.theme.ArtisticAmberDeep
 import com.example.ui.theme.ArtisticAmberGlow
 import com.example.ui.theme.ArtisticAmberGold
@@ -70,6 +70,11 @@ fun LuckyWheel(
     sectors: List<WheelSector>,
     currentRotationAngle: Float,
     isSpinning: Boolean,
+    pointerDeflectionAngle: Float = 0f,
+    phase: WheelSpinPhase = WheelSpinPhase.IDLE,
+    angularVelocity: Float = 0f,
+    landedSectorIndex: Int = 0,
+    landingPulseAlpha: Float = 0f,
     onSpinClick: () -> Unit,
     onSpinComplete: (finalAngle: Float) -> Unit,
     modifier: Modifier = Modifier
@@ -80,18 +85,21 @@ fun LuckyWheel(
         initialValue = 0f,
         targetValue = 1f,
         animationSpec = infiniteRepeatable(
-            animation = tween(500, easing = LinearEasing),
+            animation = tween(400, easing = LinearEasing),
             repeatMode = RepeatMode.Reverse
         ),
         label = "light_pulse"
     )
 
-    // Ticker pointer vibration/bounce when spinning
+    // Dynamic pointer needle angle directly from physics engine deflection
     val pointerJiggle = if (isSpinning) {
-        (Math.sin((currentRotationAngle * 0.4).toDouble()).toFloat() * 7.5f)
+        pointerDeflectionAngle
     } else {
         0f
     }
+
+    // Dynamic speed blur factor
+    val speedNorm = (angularVelocity / 1500f).coerceIn(0f, 1f)
 
     Box(
         modifier = modifier
@@ -125,19 +133,20 @@ fun LuckyWheel(
                 size = Size(maxRadius * 2.04f, maxRadius * 1.95f)
             )
 
-            // Radiant Festive Golden Aura
+            // Radiant Festive Golden Aura (intensifies with velocity or landing pulse)
+            val auraAlpha = 0.22f + (speedNorm * 0.25f) + (landingPulseAlpha * 0.35f)
             drawCircle(
                 brush = Brush.radialGradient(
                     colors = listOf(
-                        ArtisticAmberGlow.copy(alpha = 0.30f),
-                        ArtisticAmberGold.copy(alpha = 0.12f),
+                        ArtisticAmberGlow.copy(alpha = auraAlpha.coerceIn(0f, 0.7f)),
+                        ArtisticAmberGold.copy(alpha = (auraAlpha * 0.45f).coerceIn(0f, 0.4f)),
                         Color.Transparent
                     ),
                     center = Offset(cx, cy),
-                    radius = maxRadius * 1.15f
+                    radius = maxRadius * (1.12f + landingPulseAlpha * 0.08f)
                 ),
                 center = Offset(cx, cy),
-                radius = maxRadius * 1.15f
+                radius = maxRadius * (1.12f + landingPulseAlpha * 0.08f)
             )
         }
 
@@ -205,7 +214,7 @@ fun LuckyWheel(
                 val bx = cx + (Math.cos(angleRad.toDouble()) * bulbOrbitRadius).toFloat()
                 val by = cy + (Math.sin(angleRad.toDouble()) * bulbOrbitRadius).toFloat()
 
-                val isBulbActive = (i % 2 == 0 && lightPulse > 0.5f) || (i % 2 != 0 && lightPulse <= 0.5f)
+                val isBulbActive = (i % 2 == 0 && lightPulse > 0.5f) || (i % 2 != 0 && lightPulse <= 0.5f) || (speedNorm > 0.6f)
                 val bulbBaseColor = if (isBulbActive) ArtisticCream else ArtisticAmberDeep
 
                 // 3D Stud Drop Shadow
@@ -260,15 +269,20 @@ fun LuckyWheel(
             val wheelRadius = minOf(cx, cy)
 
             // Draw 4 Slices with radial gradient & 3D bevels
-            sectors.forEach { sector ->
+            sectors.forEachIndexed { index, sector ->
                 val startAngle = sector.startAngleDeg
                 val sweepAngle = sector.sweepAngleDeg
+                val isTargetLandedSector = (phase == WheelSpinPhase.FINAL_LANDING || phase == WheelSpinPhase.LANDED) &&
+                        index == landedSectorIndex
 
                 // Sector Arc with 3D Center-to-Edge Shading
+                val baseColor = sector.primaryColor
+                val deepColor = sector.secondaryColor
+
                 val gradientBrush = Brush.radialGradient(
                     colors = listOf(
-                        sector.primaryColor,
-                        sector.secondaryColor,
+                        if (isTargetLandedSector && sector.isWin) Color(0xFFFFD54F) else baseColor,
+                        deepColor,
                         Color(0xFF1F0101) // Ambient occlusion near outer rim
                     ),
                     center = Offset(cx, cy),
@@ -283,6 +297,36 @@ fun LuckyWheel(
                     topLeft = Offset(cx - wheelRadius, cy - wheelRadius),
                     size = Size(wheelRadius * 2, wheelRadius * 2)
                 )
+
+                // Highlighting landed prize sector
+                if (isTargetLandedSector) {
+                    drawArc(
+                        brush = Brush.radialGradient(
+                            colors = listOf(
+                                ArtisticAmberGlow.copy(alpha = 0.45f + landingPulseAlpha * 0.35f),
+                                Color.Transparent
+                            ),
+                            center = Offset(cx, cy),
+                            radius = wheelRadius
+                        ),
+                        startAngle = startAngle,
+                        sweepAngle = sweepAngle,
+                        useCenter = true,
+                        topLeft = Offset(cx - wheelRadius, cy - wheelRadius),
+                        size = Size(wheelRadius * 2, wheelRadius * 2)
+                    )
+
+                    // Radiant Golden Border around winning sector
+                    drawArc(
+                        color = Color(0xFFFFE082).copy(alpha = 0.7f + landingPulseAlpha * 0.3f),
+                        startAngle = startAngle,
+                        sweepAngle = sweepAngle,
+                        useCenter = true,
+                        topLeft = Offset(cx - wheelRadius * 0.98f, cy - wheelRadius * 0.98f),
+                        size = Size(wheelRadius * 1.96f, wheelRadius * 1.96f),
+                        style = Stroke(width = 5f)
+                    )
+                }
 
                 // 3D Golden Divider Spoke Lines (Double Stroke: shadow + highlight)
                 val lineAngleRad = Math.toRadians(startAngle.toDouble())
@@ -311,26 +355,32 @@ fun LuckyWheel(
                     strokeWidth = 3f,
                     cap = StrokeCap.Round
                 )
+            }
 
-                // 3D Raised Boundary Pin (Peg) with cast shadow
-                val pinX = lineEndX * 0.93f + cx * 0.07f
-                val pinY = lineEndY * 0.93f + cy * 0.07f
+            // Draw 24 3D Metallic Boundary Pegs around wheel rim (15 degrees each)
+            val numPins = WheelPhysicsEngine.NUM_PINS
+            val pinOrbitRadius = wheelRadius * 0.93f
+            for (p in 0 until numPins) {
+                val pAngleDeg = p * WheelPhysicsEngine.PIN_SPACING_DEG
+                val pAngleRad = Math.toRadians(pAngleDeg.toDouble())
+                val pinX = cx + (Math.cos(pAngleRad) * pinOrbitRadius).toFloat()
+                val pinY = cy + (Math.sin(pAngleRad) * pinOrbitRadius).toFloat()
 
                 // Pin Shadow
                 drawCircle(
                     color = Color(0x99000000),
-                    center = Offset(pinX + 2f, pinY + 2.5f),
-                    radius = 6f
+                    center = Offset(pinX + 1.8f, pinY + 2.2f),
+                    radius = 5.5f
                 )
                 // Pin 3D Metallic Head
                 drawCircle(
                     brush = Brush.radialGradient(
                         colors = listOf(Color.White, ArtisticAmberGold, ArtisticAmberDeep),
-                        center = Offset(pinX - 1.5f, pinY - 1.5f),
-                        radius = 6f
+                        center = Offset(pinX - 1.2f, pinY - 1.2f),
+                        radius = 5.5f
                     ),
                     center = Offset(pinX, pinY),
-                    radius = 5f
+                    radius = 4.8f
                 )
             }
 
@@ -338,14 +388,17 @@ fun LuckyWheel(
             drawIntoCanvas { canvas ->
                 val nativeCanvas = canvas.nativeCanvas
 
-                sectors.forEach { sector ->
+                sectors.forEachIndexed { index, sector ->
                     val midAngleDeg = sector.startAngleDeg + sector.sweepAngleDeg / 2f
                     nativeCanvas.save()
                     nativeCanvas.rotate(midAngleDeg, cx, cy)
 
                     val isWin = sector.type == SectorType.WIN
+                    val isTargetLanded = (phase == WheelSpinPhase.FINAL_LANDING || phase == WheelSpinPhase.LANDED) &&
+                            index == landedSectorIndex
+
                     val titlePaint = Paint().apply {
-                        color = if (isWin) GoldLight.toArgb() else Color.White.toArgb()
+                        color = if (isWin || isTargetLanded) GoldLight.toArgb() else Color.White.toArgb()
                         textSize = (wheelRadius * 0.10f).coerceIn(24f, 40f)
                         typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
                         textAlign = Paint.Align.CENTER
@@ -454,7 +507,7 @@ fun LuckyWheel(
                 path = sheenPath,
                 brush = Brush.verticalGradient(
                     colors = listOf(
-                        Color.White.copy(alpha = 0.22f),
+                        Color.White.copy(alpha = 0.22f + speedNorm * 0.12f),
                         Color.White.copy(alpha = 0.04f),
                         Color.Transparent
                     )
@@ -464,6 +517,14 @@ fun LuckyWheel(
 
         // 5. 3D Tiered Center Hub / Tactile Button (Gold & Maroon with 3D Depth)
         val centerHubSize = 92.dp
+        val centerLabel = when (phase) {
+            WheelSpinPhase.IDLE -> "SPIN"
+            WheelSpinPhase.ACCELERATION -> "ACCEL..."
+            WheelSpinPhase.DECELERATION -> "SPINNING"
+            WheelSpinPhase.FINAL_LANDING -> "LANDING!"
+            WheelSpinPhase.LANDED -> if (sectors.getOrNull(landedSectorIndex)?.isWin == true) "JACKPOT!" else "STOPPED"
+        }
+
         Box(
             modifier = Modifier
                 .size(centerHubSize)
@@ -508,11 +569,11 @@ fun LuckyWheel(
                 // Inner Content
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
-                        text = if (isSpinning) "SPINNING" else "SPIN",
+                        text = centerLabel,
                         color = ArtisticAmberGold,
                         fontWeight = FontWeight.Black,
                         fontSize = if (isSpinning) 10.sp else 15.sp,
-                        letterSpacing = 1.8.sp
+                        letterSpacing = 1.6.sp
                     )
                     // 3D Center Golden Pin
                     Box(
@@ -530,11 +591,11 @@ fun LuckyWheel(
             }
         }
 
-        // 6. 3D Suspended Ticker Needle (Cast 3D Drop Shadow & Metallic Pointer)
+        // 6. 3D Suspended Ticker Needle (Cast 3D Drop Shadow & Metallic Pointer with Dynamic Physics Deflection)
         Canvas(
             modifier = Modifier
                 .align(Alignment.TopCenter)
-                .size(width = 42.dp, height = 48.dp)
+                .size(width = 44.dp, height = 50.dp)
                 .rotate(pointerJiggle)
         ) {
             val w = size.width
@@ -561,7 +622,11 @@ fun LuckyWheel(
             drawPath(
                 path = needlePath,
                 brush = Brush.verticalGradient(
-                    colors = listOf(Color(0xFFFFF59D), ArtisticAmberGold, ArtisticAmberDeep),
+                    colors = listOf(
+                        Color(0xFFFFF59D),
+                        ArtisticAmberGold,
+                        ArtisticAmberDeep
+                    ),
                     startY = 0f,
                     endY = h
                 )
@@ -573,6 +638,15 @@ fun LuckyWheel(
                 color = ArtisticCream,
                 style = Stroke(width = 2.2f)
             )
+
+            // Pointer Tip Specular Highlight (intensifies during active peg strike)
+            if (isSpinning) {
+                drawCircle(
+                    color = Color.White.copy(alpha = 0.8f),
+                    center = Offset(cx, h - 4f),
+                    radius = 2.5f
+                )
+            }
 
             // Top Pivot Cap with 3D Shading
             drawCircle(
@@ -592,3 +666,4 @@ fun LuckyWheel(
         }
     }
 }
+

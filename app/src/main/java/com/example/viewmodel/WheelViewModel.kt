@@ -2,6 +2,8 @@ package com.example.viewmodel
 
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.data.local.AppDatabase
 import com.example.data.local.SpinHistoryEntity
@@ -20,10 +22,47 @@ import kotlin.random.Random
 
 class WheelViewModel(
     application: Application,
-    private val repository: SpinHistoryRepository = SpinHistoryRepository(
-        AppDatabase.getDatabase(application).spinHistoryDao()
-    )
+    private val repository: SpinHistoryRepository
 ) : AndroidViewModel(application) {
+
+    constructor(application: Application) : this(
+        application,
+        SpinHistoryRepository(AppDatabase.getDatabase(application).spinHistoryDao())
+    )
+
+    constructor() : this(
+        Application(),
+        SpinHistoryRepository(
+            object : com.example.data.local.SpinHistoryDao {
+                private val listFlow = kotlinx.coroutines.flow.MutableStateFlow<List<SpinHistoryEntity>>(emptyList())
+                override fun getAllHistory(): kotlinx.coroutines.flow.Flow<List<SpinHistoryEntity>> = listFlow
+                override fun getWinningsHistory(): kotlinx.coroutines.flow.Flow<List<SpinHistoryEntity>> =
+                    kotlinx.coroutines.flow.MutableStateFlow(emptyList<SpinHistoryEntity>())
+                override fun getTotalSpinsCount() = kotlinx.coroutines.flow.MutableStateFlow(0)
+                override fun getTotalWinsCount() = kotlinx.coroutines.flow.MutableStateFlow(0)
+                override suspend fun insertSpin(spin: SpinHistoryEntity): Long {
+                    listFlow.update { listOf(spin) + it }
+                    return 1L
+                }
+                override suspend fun deleteById(id: Long) {
+                    listFlow.update { it.filterNot { item -> item.id == id } }
+                }
+                override suspend fun clearAllHistory() {
+                    listFlow.value = emptyList()
+                }
+            }
+        )
+    )
+
+    class Factory(private val application: Application) : ViewModelProvider.Factory {
+        @Suppress("UNCHECKED_CAST")
+        override fun <T : ViewModel> create(modelClass: Class<T>): T {
+            if (modelClass.isAssignableFrom(WheelViewModel::class.java)) {
+                return WheelViewModel(application) as T
+            }
+            throw IllegalArgumentException("Unknown ViewModel class: ${modelClass.name}")
+        }
+    }
 
     private val _uiState = MutableStateFlow(WheelUiState())
     val uiState: StateFlow<WheelUiState> = _uiState.asStateFlow()
@@ -36,8 +75,8 @@ class WheelViewModel(
                 _uiState.update { current ->
                     current.copy(
                         historyList = history,
-                        totalSpins = history.size,
-                        totalWins = calculatedWins
+                        totalSpins = maxOf(current.totalSpins, history.size),
+                        totalWins = maxOf(current.totalWins, calculatedWins)
                     )
                 }
             }
@@ -153,6 +192,8 @@ class WheelViewModel(
                 isSpinning = false,
                 currentRotationAngle = finalAngle,
                 lastResult = result,
+                totalSpins = current.totalSpins + 1,
+                totalWins = if (isWin) current.totalWins + 1 else current.totalWins,
                 currentScreen = AppScreen.RewardResult
             )
         }
