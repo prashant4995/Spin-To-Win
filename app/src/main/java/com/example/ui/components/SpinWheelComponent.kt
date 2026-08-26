@@ -406,13 +406,14 @@ fun LuckyWheel(
                         setShadowLayer(8f, 2f, 3f, Color(0xEE000000).toArgb())
                     }
 
-                    val dishText = if (isWin) {
-                        selectedDish?.title?.uppercase() ?: "FREE DISH"
-                    } else {
-                        "TRY AGAIN"
+                    val dishTitle = selectedDish?.title?.uppercase() ?: "DELICACY"
+                    val (primaryLabel, subLabel, emoji) = when (index % 4) {
+                        0 -> Triple("FREE", dishTitle, "🎉")
+                        1 -> Triple("LUCKY", "PRASAD", "🎁")
+                        2 -> Triple("FREE", dishTitle, "⭐")
+                        else -> Triple("BAPPA'S", "BLESSING", "🪔")
                     }
 
-                    val emojiText = if (isWin) "🎉" else "🔁"
                     val emojiPaint = Paint().apply {
                         textSize = (wheelRadius * 0.12f).coerceIn(28f, 46f)
                         textAlign = Paint.Align.CENTER
@@ -423,7 +424,7 @@ fun LuckyWheel(
 
                     // Draw Emoji
                     nativeCanvas.drawText(
-                        emojiText,
+                        emoji,
                         textRadius + wheelRadius * 0.18f,
                         cy + (emojiPaint.textSize * 0.35f),
                         emojiPaint
@@ -431,7 +432,7 @@ fun LuckyWheel(
 
                     // Draw Primary Text
                     nativeCanvas.drawText(
-                        if (isWin) "FREE" else "TRY",
+                        primaryLabel,
                         textRadius - wheelRadius * 0.02f,
                         cy - 12f,
                         titlePaint
@@ -439,7 +440,7 @@ fun LuckyWheel(
 
                     // Draw Dish Name or Subtitle
                     val subTitlePaint = Paint().apply {
-                        color = if (isWin) Color(0xFFFFF9C4).toArgb() else TextGold.toArgb()
+                        color = Color(0xFFFFF9C4).toArgb()
                         textSize = (wheelRadius * 0.082f).coerceIn(18f, 30f)
                         typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
                         textAlign = Paint.Align.CENTER
@@ -448,7 +449,7 @@ fun LuckyWheel(
                     }
 
                     nativeCanvas.drawText(
-                        if (isWin) dishText else "AGAIN",
+                        subLabel,
                         textRadius - wheelRadius * 0.02f,
                         cy + subTitlePaint.textSize + 2f,
                         subTitlePaint

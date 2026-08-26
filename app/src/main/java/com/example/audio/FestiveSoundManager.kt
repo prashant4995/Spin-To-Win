@@ -3,6 +3,7 @@ package com.example.audio
 import android.content.Context
 import android.media.AudioAttributes
 import android.media.SoundPool
+import android.speech.tts.TextToSpeech
 import android.util.Log
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -14,6 +15,7 @@ import java.io.File
 import java.io.FileOutputStream
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
+import java.util.Locale
 import kotlin.math.PI
 import kotlin.math.exp
 import kotlin.math.pow
@@ -27,8 +29,9 @@ import kotlin.math.sin
  * - Festive reward claim fanfare
  * - Encouraging try-again tones
  * - Tactile UI interaction clicks
+ * - TextToSpeech announcer for declaring winner names out loud!
  */
-class FestiveSoundManager private constructor(private val context: Context) {
+class FestiveSoundManager private constructor(private val context: Context) : TextToSpeech.OnInitListener {
 
     private val scope = CoroutineScope(Dispatchers.IO)
 
@@ -36,6 +39,8 @@ class FestiveSoundManager private constructor(private val context: Context) {
     val isMuted: StateFlow<Boolean> = _isMuted.asStateFlow()
 
     private var soundPool: SoundPool? = null
+    private var textToSpeech: TextToSpeech? = null
+    private var isTtsReady: Boolean = false
 
     private var spinSoundId: Int = 0
     private var winChimeSoundId: Int = 0
@@ -48,6 +53,33 @@ class FestiveSoundManager private constructor(private val context: Context) {
 
     init {
         initializeSoundPool()
+        initializeTts()
+    }
+
+    private fun initializeTts() {
+        try {
+            textToSpeech = TextToSpeech(context, this)
+        } catch (e: Exception) {
+            Log.w("FestiveSoundManager", "Error creating TextToSpeech", e)
+        }
+    }
+
+    override fun onInit(status: Int) {
+        if (status == TextToSpeech.SUCCESS) {
+            isTtsReady = true
+            try {
+                // Try Indian English first for regional Indian names, fallback to default/US
+                val localeIn = Locale("en", "IN")
+                val result = textToSpeech?.setLanguage(localeIn)
+                if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED) {
+                    textToSpeech?.language = Locale.getDefault()
+                }
+                textToSpeech?.setSpeechRate(0.95f)
+                textToSpeech?.setPitch(1.05f)
+            } catch (e: Exception) {
+                Log.w("FestiveSoundManager", "Error configuring TTS locale", e)
+            }
+        }
     }
 
     private fun initializeSoundPool() {
@@ -248,13 +280,65 @@ class FestiveSoundManager private constructor(private val context: Context) {
         }
     }
 
+    /**
+     * Announces the winner's name and prize out loud using Text-To-Speech with celebratory enthusiasm.
+     */
+    fun announceWinner(userName: String, prizeName: String = "") {
+        if (_isMuted.value) return
+        val cleanName = userName.trim()
+        val announcement = if (cleanName.isNotBlank() && !cleanName.equals("Valued Guest", ignoreCase = true) && !cleanName.equals("Guest", ignoreCase = true)) {
+            if (prizeName.isNotBlank()) {
+                "Congratulations $cleanName! You have won free $prizeName! Ganpati Bappa Morya!"
+            } else {
+                "Congratulations $cleanName! You are our lucky festive winner! Ganpati Bappa Morya!"
+            }
+        } else {
+            if (prizeName.isNotBlank()) {
+                "Congratulations! You have won free $prizeName! Ganpati Bappa Morya!"
+            } else {
+                "Congratulations! You are our lucky festive winner! Ganpati Bappa Morya!"
+            }
+        }
+
+        speakText(announcement)
+    }
+
+    /**
+     * Speaks arbitrary announcement text out loud.
+     */
+    fun speakText(text: String) {
+        if (_isMuted.value) return
+        try {
+            if (isTtsReady && textToSpeech != null) {
+                textToSpeech?.stop()
+                textToSpeech?.speak(text, TextToSpeech.QUEUE_FLUSH, null, "LUCKY_SPIN_ANNOUNCEMENT_${System.currentTimeMillis()}")
+            }
+        } catch (e: Exception) {
+            Log.w("FestiveSoundManager", "Error in TextToSpeech announcement", e)
+        }
+    }
+
+    /**
+     * Stops any ongoing TTS announcement.
+     */
+    fun stopAnnouncement() {
+        try {
+            textToSpeech?.stop()
+        } catch (e: Exception) {
+            Log.w("FestiveSoundManager", "Error stopping TTS", e)
+        }
+    }
+
     fun release() {
         try {
             stopSpinSound()
+            stopAnnouncement()
+            textToSpeech?.shutdown()
+            textToSpeech = null
             soundPool?.release()
             soundPool = null
         } catch (e: Exception) {
-            Log.w("FestiveSoundManager", "Error releasing SoundPool", e)
+            Log.w("FestiveSoundManager", "Error releasing SoundPool/TTS", e)
         }
     }
 

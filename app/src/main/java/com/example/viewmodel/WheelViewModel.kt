@@ -36,13 +36,23 @@ class WheelViewModel(
             object : com.example.data.local.SpinHistoryDao {
                 private val listFlow = kotlinx.coroutines.flow.MutableStateFlow<List<SpinHistoryEntity>>(emptyList())
                 override fun getAllHistory(): kotlinx.coroutines.flow.Flow<List<SpinHistoryEntity>> = listFlow
-                override fun getWinningsHistory(): kotlinx.coroutines.flow.Flow<List<SpinHistoryEntity>> =
+                override fun getFreeWinningsHistory(): kotlinx.coroutines.flow.Flow<List<SpinHistoryEntity>> =
+                    kotlinx.coroutines.flow.MutableStateFlow(emptyList<SpinHistoryEntity>())
+                override fun getSoldHistory(): kotlinx.coroutines.flow.Flow<List<SpinHistoryEntity>> =
                     kotlinx.coroutines.flow.MutableStateFlow(emptyList<SpinHistoryEntity>())
                 override fun getTotalSpinsCount() = kotlinx.coroutines.flow.MutableStateFlow(0)
                 override fun getTotalWinsCount() = kotlinx.coroutines.flow.MutableStateFlow(0)
+                override fun getTotalItemsSoldCount() = kotlinx.coroutines.flow.MutableStateFlow(0)
+                override fun getTotalItemsFreeCount() = kotlinx.coroutines.flow.MutableStateFlow(0)
+                override fun getTotalRevenue() = kotlinx.coroutines.flow.MutableStateFlow(0)
                 override suspend fun insertSpin(spin: SpinHistoryEntity): Long {
                     listFlow.update { listOf(spin) + it }
                     return 1L
+                }
+                override suspend fun markAsPaidViaQr(id: Long, amount: Int) {
+                    listFlow.update { list ->
+                        list.map { if (it.id == id) it.copy(isSold = true, isPaidViaQr = true, totalAmount = amount) else it }
+                    }
                 }
                 override suspend fun deleteById(id: Long) {
                     listFlow.update { it.filterNot { item -> item.id == id } }
@@ -68,15 +78,22 @@ class WheelViewModel(
     val uiState: StateFlow<WheelUiState> = _uiState.asStateFlow()
 
     init {
-        // Collect persistent spin history from Room Database
+        // Collect persistent history and compute sold/free item metrics in real-time
         viewModelScope.launch {
             repository.allHistory.collect { history ->
-                val calculatedWins = history.count { it.isWin }
+                val calculatedWins = history.count { it.isWin || it.isFree }
+                val itemsSold = history.filter { it.isSold }.sumOf { it.quantity }
+                val itemsFree = history.filter { it.isFree || it.isWin }.sumOf { it.quantity }
+                val revenue = history.filter { it.isSold }.sumOf { it.totalAmount }
+
                 _uiState.update { current ->
                     current.copy(
                         historyList = history,
                         totalSpins = maxOf(current.totalSpins, history.size),
-                        totalWins = maxOf(current.totalWins, calculatedWins)
+                        totalWins = maxOf(current.totalWins, calculatedWins),
+                        totalItemsSold = itemsSold,
+                        totalItemsFree = itemsFree,
+                        totalRevenue = revenue
                     )
                 }
             }
@@ -96,6 +113,19 @@ class WheelViewModel(
         _uiState.update { current ->
             current.copy(selectedDish = dish)
         }
+    }
+
+    fun setQuantity(qty: Int) {
+        val safeQty = qty.coerceIn(1, 50)
+        _uiState.update { it.copy(quantity = safeQty) }
+    }
+
+    fun incrementQuantity() {
+        _uiState.update { it.copy(quantity = (it.quantity + 1).coerceAtMost(50)) }
+    }
+
+    fun decrementQuantity() {
+        _uiState.update { it.copy(quantity = (it.quantity - 1).coerceAtLeast(1)) }
     }
 
     fun proceedToSpin() {
@@ -118,24 +148,22 @@ class WheelViewModel(
 
     /**
      * Calculates the spin target angle and sets up the spin animation.
-     * Guaranteed to stop accurately at a chosen sector.
      */
     fun startSpin(onTargetCalculated: (targetAngle: Float) -> Unit) {
         val state = _uiState.value
         if (state.isSpinning) return
 
-        // Alternating win/try again (50% base win probability for exciting festival experience)
-        // Choose target sector: 0 (Win), 1 (Try again), 2 (Win), 3 (Try again)
+        // 50% Win Probability for festival excitement
         val targetSectorIndex = Random.nextInt(0, 4)
         val targetSector = state.sectors[targetSectorIndex]
 
         val sectorCenterAngle = (targetSectorIndex * 90f + 45f)
         val requiredMod = (270f - sectorCenterAngle + 360f) % 360f
 
-        // Random jitter inside the sector: -22° to +22° (well inside 90° arc)
+        // Random jitter inside the sector: -22° to +22°
         val jitter = Random.nextFloat() * 44f - 22f
 
-        // Full rotations: between 5 and 7 complete spins for high drama
+        // Full rotations: between 5 and 7 complete spins
         val fullRotations = (5 + Random.nextInt(3)) * 360f
 
         val currentAngle = state.currentRotationAngle
@@ -161,27 +189,35 @@ class WheelViewModel(
         val state = _uiState.value
         val sector = state.targetSector ?: state.sectors[0]
         val isWin = sector.type == SectorType.WIN
-        val claimCode = if (isWin) generateClaimCode() else ""
         val wonDish = if (isWin) state.selectedDish else null
         val guestName = state.userName.trim().ifEmpty { "Festive Guest" }
+        val currentDish = state.selectedDish
 
         val result = SpinResult(
             isWin = isWin,
             wonDish = wonDish,
+            quantity = state.quantity,
             userName = guestName,
-            claimCode = claimCode
+            isSold = false,
+            amountPaid = 0,
+            isPaidViaQr = false
         )
 
-        // Persist spin outcome to Room Database
+        // Persist spin record to Room Database
         viewModelScope.launch {
             val entity = SpinHistoryEntity(
                 userName = guestName,
                 isWin = isWin,
-                dishName = wonDish?.title,
-                dishNativeTitle = wonDish?.nativeTitle,
-                dishSubtitle = wonDish?.subtitle,
-                dishEmoji = wonDish?.emoji,
-                claimCode = claimCode,
+                isSold = false,
+                isFree = isWin,
+                quantity = if (isWin) 1 else state.quantity,
+                unitPrice = currentDish?.pricePerUnit ?: 30,
+                totalAmount = 0,
+                dishName = (wonDish ?: currentDish)?.title,
+                dishNativeTitle = (wonDish ?: currentDish)?.nativeTitle,
+                dishSubtitle = (wonDish ?: currentDish)?.subtitle,
+                dishEmoji = (wonDish ?: currentDish)?.emoji,
+                isPaidViaQr = false,
                 timestamp = System.currentTimeMillis()
             )
             repository.insertSpin(entity)
@@ -194,9 +230,67 @@ class WheelViewModel(
                 lastResult = result,
                 totalSpins = current.totalSpins + 1,
                 totalWins = if (isWin) current.totalWins + 1 else current.totalWins,
-                currentScreen = AppScreen.RewardResult
+                currentScreen = AppScreen.RewardResult,
+                showPaymentQrModal = false,
+                isPaymentSuccess = false
             )
         }
+    }
+
+    /**
+     * Complete payment via QR Code for sold items.
+     * Records the purchase in Room Database as Sold item with revenue.
+     */
+    fun recordPaymentViaQr(customQty: Int? = null) {
+        val state = _uiState.value
+        if (state.isPaymentSuccess) return
+
+        val dish = state.selectedDish ?: Dish.MODAK
+        val isWin = state.lastResult?.isWin == true
+        val paidQty = customQty ?: if (isWin) (state.quantity - 1).coerceAtLeast(0) else state.quantity
+        val totalAmt = (dish.pricePerUnit) * paidQty
+        val guestName = state.userName.trim().ifEmpty { "Festive Customer" }
+
+        if (paidQty > 0) {
+            viewModelScope.launch {
+                val entity = SpinHistoryEntity(
+                    userName = guestName,
+                    isWin = false,
+                    isSold = true,
+                    isFree = false,
+                    quantity = paidQty,
+                    unitPrice = dish.pricePerUnit,
+                    totalAmount = totalAmt,
+                    dishName = dish.title,
+                    dishNativeTitle = dish.nativeTitle,
+                    dishSubtitle = dish.subtitle,
+                    dishEmoji = dish.emoji,
+                    isPaidViaQr = true,
+                    timestamp = System.currentTimeMillis()
+                )
+                repository.insertSpin(entity)
+            }
+        }
+
+        _uiState.update { current ->
+            current.copy(
+                isPaymentSuccess = true,
+                showPaymentQrModal = true,
+                lastResult = current.lastResult?.copy(
+                    isSold = true,
+                    amountPaid = totalAmt,
+                    isPaidViaQr = true
+                )
+            )
+        }
+    }
+
+    fun openPaymentQrModal() {
+        _uiState.update { it.copy(showPaymentQrModal = true) }
+    }
+
+    fun closePaymentQrModal() {
+        _uiState.update { it.copy(showPaymentQrModal = false) }
     }
 
     fun spinAgain() {
@@ -204,17 +298,56 @@ class WheelViewModel(
             current.copy(
                 currentScreen = AppScreen.SpinWheel,
                 isSpinning = false,
-                lastResult = null
+                lastResult = null,
+                showPaymentQrModal = false,
+                isPaymentSuccess = false
             )
         }
     }
 
+    /**
+     * Finalizes the current order/spin:
+     * Considers payment as DONE (automatically records any pending payment/sale in Room DB),
+     * then resets state back to Dashboard/Registration.
+     */
     fun claimAndReset() {
+        val state = _uiState.value
+        val dish = state.selectedDish
+        val isWin = state.lastResult?.isWin == true
+        val paidQty = if (isWin) (state.quantity - 1).coerceAtLeast(0) else state.quantity
+        val totalAmt = if (dish != null) paidQty * dish.pricePerUnit else 0
+        val guestName = state.userName.trim().ifEmpty { "Festive Customer" }
+
+        // If payment was not already explicitly recorded, mark and record it as Payment Done now
+        if (!state.isPaymentSuccess && dish != null && paidQty > 0) {
+            viewModelScope.launch {
+                val entity = SpinHistoryEntity(
+                    userName = guestName,
+                    isWin = false,
+                    isSold = true,
+                    isFree = false,
+                    quantity = paidQty,
+                    unitPrice = dish.pricePerUnit,
+                    totalAmount = totalAmt,
+                    dishName = dish.title,
+                    dishNativeTitle = dish.nativeTitle,
+                    dishSubtitle = dish.subtitle,
+                    dishEmoji = dish.emoji,
+                    isPaidViaQr = true,
+                    timestamp = System.currentTimeMillis()
+                )
+                repository.insertSpin(entity)
+            }
+        }
+
         _uiState.update { current ->
             WheelUiState(
                 historyList = current.historyList,
                 totalSpins = current.totalSpins,
-                totalWins = current.totalWins
+                totalWins = current.totalWins,
+                totalItemsSold = current.totalItemsSold,
+                totalItemsFree = current.totalItemsFree,
+                totalRevenue = current.totalRevenue
             )
         }
     }
@@ -234,8 +367,8 @@ class WheelViewModel(
         }
     }
 
-    fun setHistoryFilterOnlyWins(onlyWins: Boolean) {
-        _uiState.update { it.copy(historyFilterOnlyWins = onlyWins) }
+    fun setHistoryFilterType(filter: HistoryFilterType) {
+        _uiState.update { it.copy(historyFilterType = filter) }
     }
 
     fun deleteHistoryItem(id: Long) {
@@ -253,12 +386,6 @@ class WheelViewModel(
     fun navigateTo(screen: AppScreen) {
         _uiState.update { it.copy(currentScreen = screen) }
     }
-
-    private fun generateClaimCode(): String {
-        val codeChars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
-        val prefix = "LUCKY"
-        val suffix = (1..4).map { codeChars.random() }.joinToString("")
-        return "$prefix-$suffix"
-    }
 }
+
 

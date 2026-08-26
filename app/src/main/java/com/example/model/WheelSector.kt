@@ -7,8 +7,7 @@ import com.example.ui.theme.SaffronDark
 import com.example.ui.theme.SaffronPrimary
 
 enum class SectorType {
-    WIN,
-    TRY_AGAIN
+    WIN
 }
 
 data class WheelSector(
@@ -21,7 +20,7 @@ data class WheelSector(
     val primaryColor: Color,
     val secondaryColor: Color
 ) {
-    val isWin: Boolean get() = type == SectorType.WIN
+    val isWin: Boolean get() = true
 
     companion object {
         fun createDefaultSectors(): List<WheelSector> {
@@ -37,9 +36,9 @@ data class WheelSector(
                 ),
                 WheelSector(
                     id = 1,
-                    type = SectorType.TRY_AGAIN,
-                    labelText = { _ -> "🔁 TRY AGAIN" },
-                    subText = "Better Luck Next!",
+                    type = SectorType.WIN,
+                    labelText = { dish -> "🎁 LUCKY ${dish?.title?.uppercase() ?: "PRASAD"}" },
+                    subText = "Bappa's Blessing!",
                     startAngleDeg = 90f,
                     primaryColor = SaffronPrimary,
                     secondaryColor = SaffronDark
@@ -55,9 +54,9 @@ data class WheelSector(
                 ),
                 WheelSector(
                     id = 3,
-                    type = SectorType.TRY_AGAIN,
-                    labelText = { _ -> "🔁 TRY AGAIN" },
-                    subText = "Almost Had It!",
+                    type = SectorType.WIN,
+                    labelText = { dish -> "⭐ FESTIVE ${dish?.title?.uppercase() ?: "TREAT"}" },
+                    subText = "Special Prasad!",
                     startAngleDeg = 270f,
                     primaryColor = SaffronPrimary,
                     secondaryColor = SaffronDark

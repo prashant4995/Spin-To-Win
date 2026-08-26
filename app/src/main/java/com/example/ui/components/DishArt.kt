@@ -10,7 +10,6 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -25,17 +24,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
-import androidx.compose.ui.graphics.drawscope.Fill
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.dp
 import com.example.model.Dish
 import com.example.ui.theme.GoldAccent
 import com.example.ui.theme.GoldDark
 import com.example.ui.theme.GoldLight
-import com.example.ui.theme.MaroonDeep
-import com.example.ui.theme.MaroonRoyal
-import com.example.ui.theme.SaffronDark
-import com.example.ui.theme.SaffronPrimary
 
 @Composable
 fun DishIllustration(
@@ -56,18 +50,18 @@ fun DishIllustration(
         contentAlignment = Alignment.Center
     ) {
         when (dish) {
-            Dish.KOTHIMBIR_VADI -> KothimbirVadiArt(modifier = Modifier.fillMaxSize())
+            Dish.KHANDVI -> KhandviArt(modifier = Modifier.fillMaxSize())
             Dish.MODAK -> ModakArt(modifier = Modifier.fillMaxSize())
         }
     }
 }
 
 @Composable
-fun KothimbirVadiArt(modifier: Modifier = Modifier) {
-    val infiniteTransition = rememberInfiniteTransition(label = "steam")
+fun KhandviArt(modifier: Modifier = Modifier) {
+    val infiniteTransition = rememberInfiniteTransition(label = "steam_khandvi")
     val steamOffset by infiniteTransition.animateFloat(
         initialValue = 0f,
-        targetValue = 18f,
+        targetValue = 16f,
         animationSpec = infiniteRepeatable(
             animation = tween(1800, easing = FastOutSlowInEasing),
             repeatMode = RepeatMode.Reverse
@@ -84,7 +78,7 @@ fun KothimbirVadiArt(modifier: Modifier = Modifier) {
         // Warm radial glow behind plate
         drawCircle(
             brush = Brush.radialGradient(
-                colors = listOf(Color(0x55FFA000), Color.Transparent),
+                colors = listOf(Color(0x66FFC107), Color.Transparent),
                 center = Offset(cx, cy),
                 radius = w * 0.45f
             ),
@@ -92,7 +86,7 @@ fun KothimbirVadiArt(modifier: Modifier = Modifier) {
             radius = w * 0.45f
         )
 
-        // Brass Thali / Plate base
+        // Traditional Brass / Gold Thali base
         val plateRadius = minOf(w, h) * 0.40f
         drawCircle(
             brush = Brush.radialGradient(
@@ -121,39 +115,39 @@ fun KothimbirVadiArt(modifier: Modifier = Modifier) {
             size = Size(plateRadius * 1.56f, plateRadius * 1.45f)
         )
 
-        // 3 Crispy Golden Kothimbir Vadi Cubes / Diamonds (stacked appetizingly)
-        val vadiWidth = plateRadius * 0.52f
-        val vadiHeight = plateRadius * 0.40f
+        // 3 Silky Spiced Khandvi Cylindrical Rolls stacked neatly
+        val rollWidth = plateRadius * 0.62f
+        val rollHeight = plateRadius * 0.28f
 
-        // Vadi 1 (Back Left)
-        drawVadiPiece(
-            centerX = cx - plateRadius * 0.32f,
-            centerY = cy - plateRadius * 0.12f + h * 0.04f,
-            width = vadiWidth,
-            height = vadiHeight,
-            rotationDeg = -14f
+        // Khandvi Roll 1 (Back Left)
+        drawKhandviRoll(
+            centerX = cx - plateRadius * 0.25f,
+            centerY = cy - plateRadius * 0.15f + h * 0.04f,
+            width = rollWidth,
+            height = rollHeight,
+            rotationDeg = -10f
         )
 
-        // Vadi 2 (Back Right)
-        drawVadiPiece(
-            centerX = cx + plateRadius * 0.30f,
-            centerY = cy - plateRadius * 0.08f + h * 0.04f,
-            width = vadiWidth,
-            height = vadiHeight,
-            rotationDeg = 18f
+        // Khandvi Roll 2 (Back Right)
+        drawKhandviRoll(
+            centerX = cx + plateRadius * 0.22f,
+            centerY = cy - plateRadius * 0.10f + h * 0.04f,
+            width = rollWidth,
+            height = rollHeight,
+            rotationDeg = 12f
         )
 
-        // Vadi 3 (Front Center - Crisp Hero Piece)
-        drawVadiPiece(
+        // Khandvi Roll 3 (Front Center Hero Roll)
+        drawKhandviRoll(
             centerX = cx - plateRadius * 0.02f,
-            centerY = cy + plateRadius * 0.20f + h * 0.04f,
-            width = vadiWidth * 1.08f,
-            height = vadiHeight * 1.08f,
-            rotationDeg = 3f,
+            centerY = cy + plateRadius * 0.18f + h * 0.04f,
+            width = rollWidth * 1.10f,
+            height = rollHeight * 1.10f,
+            rotationDeg = 0f,
             isHero = true
         )
 
-        // Fresh Green Mint Chutney Bowl (Small brass katori on side)
+        // Fresh Green Mint/Coriander Chutney Bowl
         val bowlCx = cx + plateRadius * 0.48f
         val bowlCy = cy - plateRadius * 0.32f + h * 0.04f
         val bowlR = plateRadius * 0.22f
@@ -166,7 +160,6 @@ fun KothimbirVadiArt(modifier: Modifier = Modifier) {
             center = Offset(bowlCx, bowlCy),
             radius = bowlR
         )
-        // Green Chutney inside
         drawCircle(
             brush = Brush.radialGradient(
                 colors = listOf(Color(0xFF66BB6A), Color(0xFF2E7D32)),
@@ -200,7 +193,7 @@ fun KothimbirVadiArt(modifier: Modifier = Modifier) {
     }
 }
 
-private fun DrawScope.drawVadiPiece(
+private fun DrawScope.drawKhandviRoll(
     centerX: Float,
     centerY: Float,
     width: Float,
@@ -208,80 +201,125 @@ private fun DrawScope.drawVadiPiece(
     rotationDeg: Float,
     isHero: Boolean = false
 ) {
-    // Save state rotation could be simulated or drawn as 3D block
-    val vadiColorPrimary = if (isHero) Color(0xFFC07010) else Color(0xFFA85E0A)
-    val vadiColorDark = if (isHero) Color(0xFF7E3802) else Color(0xFF6B2F02)
-    val vadiColorLight = if (isHero) Color(0xFFE59424) else Color(0xFFCD8118)
+    val khandviYellowBright = if (isHero) Color(0xFFFFD54F) else Color(0xFFFFCA28)
+    val khandviYellowRich = if (isHero) Color(0xFFFFB300) else Color(0xFFFFA000)
+    val khandviYellowDeep = if (isHero) Color(0xFFFF8F00) else Color(0xFFE65100)
 
     val halfW = width / 2f
     val halfH = height / 2f
 
-    // Base rectangular shadow
+    // Soft drop shadow under the roll
     drawRoundRect(
         color = Color(0x66000000),
-        topLeft = Offset(centerX - halfW + 4f, centerY - halfH + 8f),
+        topLeft = Offset(centerX - halfW + 3f, centerY - halfH + 6f),
         size = Size(width, height),
-        cornerRadius = CornerRadius(10f, 10f)
+        cornerRadius = CornerRadius(14f, 14f)
     )
 
-    // Crispy body with appetizing golden-brown fried gradient
+    // Silky smooth Khandvi rolled cylindrical body
     drawRoundRect(
         brush = Brush.linearGradient(
-            colors = listOf(vadiColorLight, vadiColorPrimary, vadiColorDark),
+            colors = listOf(khandviYellowBright, khandviYellowRich, khandviYellowDeep),
             start = Offset(centerX - halfW, centerY - halfH),
-            end = Offset(centerX + halfW, centerY + halfH)
+            end = Offset(centerX - halfW, centerY + halfH)
         ),
         topLeft = Offset(centerX - halfW, centerY - halfH),
         size = Size(width, height),
-        cornerRadius = CornerRadius(10f, 10f)
+        cornerRadius = CornerRadius(14f, 14f)
     )
 
-    // Crispy golden top edge highlight
+    // Glistening silky top highlight
     drawRoundRect(
         brush = Brush.linearGradient(
-            colors = listOf(Color(0x99FFE082), Color.Transparent),
-            start = Offset(centerX, centerY - halfH),
-            end = Offset(centerX, centerY - halfH + 12f)
+            colors = listOf(Color(0x99FFF9C4), Color.Transparent),
+            start = Offset(centerX, centerY - halfH + 2f),
+            end = Offset(centerX, centerY - halfH + 8f)
         ),
-        topLeft = Offset(centerX - halfW + 2f, centerY - halfH + 2f),
-        size = Size(width - 4f, 10f),
-        cornerRadius = CornerRadius(6f, 6f)
+        topLeft = Offset(centerX - halfW + 4f, centerY - halfH + 2f),
+        size = Size(width - 8f, 6f),
+        cornerRadius = CornerRadius(8f, 8f)
     )
 
-    // Green cilantro flecks inside vadi
-    val fleckColor = Color(0xFF33691E)
-    val fleckOffsets = listOf(
-        Offset(-halfW * 0.5f, -halfH * 0.3f),
-        Offset(-halfW * 0.2f, halfH * 0.2f),
-        Offset(halfW * 0.4f, -halfH * 0.4f),
-        Offset(halfW * 0.1f, -halfH * 0.1f),
-        Offset(halfW * 0.5f, halfH * 0.3f),
-        Offset(-halfW * 0.6f, halfH * 0.4f)
+    // Characteristic spiral roll layers at edge
+    val spiralColor = Color(0x55E65100)
+    drawOval(
+        color = spiralColor,
+        topLeft = Offset(centerX - halfW + 2f, centerY - halfH + 2f),
+        size = Size(10f, height - 4f),
+        style = Stroke(width = 1.5f)
     )
-    for (f in fleckOffsets) {
+    drawOval(
+        color = spiralColor,
+        topLeft = Offset(centerX - halfW + 5f, centerY - halfH + 5f),
+        size = Size(6f, height - 10f),
+        style = Stroke(width = 1.2f)
+    )
+
+    // Black Mustard Seeds Tadka (Rai)
+    val mustardColor = Color(0xFF212121)
+    val mustardOffsets = listOf(
+        Offset(-halfW * 0.4f, -halfH * 0.2f),
+        Offset(-halfW * 0.1f, halfH * 0.3f),
+        Offset(halfW * 0.3f, -halfH * 0.3f),
+        Offset(halfW * 0.15f, halfH * 0.1f),
+        Offset(-halfW * 0.6f, halfH * 0.1f),
+        Offset(halfW * 0.5f, -halfH * 0.1f)
+    )
+    for (m in mustardOffsets) {
         drawCircle(
-            color = fleckColor,
-            center = Offset(centerX + f.x, centerY + f.y),
-            radius = 3.5f
+            color = mustardColor,
+            center = Offset(centerX + m.x, centerY + m.y),
+            radius = 2.5f
         )
     }
 
-    // White / Golden Sesame seeds (Til) on top
+    // Golden / White Sesame Seeds (Til)
     val sesameColor = Color(0xFFFFFDE7)
     val sesameOffsets = listOf(
-        Offset(-halfW * 0.4f, -halfH * 0.2f),
-        Offset(-halfW * 0.1f, -halfH * 0.5f),
-        Offset(halfW * 0.2f, -halfH * 0.3f),
-        Offset(-halfW * 0.3f, halfH * 0.4f),
-        Offset(halfW * 0.35f, halfH * 0.1f),
-        Offset(0f, 0f),
-        Offset(halfW * 0.55f, -halfH * 0.1f)
+        Offset(-halfW * 0.3f, -halfH * 0.4f),
+        Offset(halfW * 0.05f, -halfH * 0.2f),
+        Offset(halfW * 0.35f, halfH * 0.25f),
+        Offset(-halfW * 0.15f, halfH * 0.4f),
+        Offset(halfW * 0.45f, -halfH * 0.35f)
     )
     for (s in sesameOffsets) {
         drawOval(
             color = sesameColor,
-            topLeft = Offset(centerX + s.x - 3f, centerY + s.y - 2f),
-            size = Size(7f, 4f)
+            topLeft = Offset(centerX + s.x - 2.5f, centerY + s.y - 1.5f),
+            size = Size(5.5f, 3f)
+        )
+    }
+
+    // Grated Fresh White Coconut Shreds
+    val coconutColor = Color(0xEEFFFFFF)
+    val coconutShreds = listOf(
+        Offset(-halfW * 0.5f, 0f),
+        Offset(-halfW * 0.2f, -halfH * 0.1f),
+        Offset(halfW * 0.2f, -halfH * 0.2f),
+        Offset(halfW * 0.4f, halfH * 0.2f),
+        Offset(0f, halfH * 0.25f)
+    )
+    for (c in coconutShreds) {
+        drawRoundRect(
+            color = coconutColor,
+            topLeft = Offset(centerX + c.x, centerY + c.y),
+            size = Size(7f, 2.2f),
+            cornerRadius = CornerRadius(1f, 1f)
+        )
+    }
+
+    // Fresh Green Coriander Garnish (Cilantro flecks)
+    val corianderColor = Color(0xFF388E3C)
+    val corianderOffsets = listOf(
+        Offset(-halfW * 0.35f, halfH * 0.15f),
+        Offset(halfW * 0.1f, -halfH * 0.35f),
+        Offset(halfW * 0.25f, halfH * 0.05f)
+    )
+    for (cor in corianderOffsets) {
+        drawCircle(
+            color = corianderColor,
+            center = Offset(centerX + cor.x, centerY + cor.y),
+            radius = 3.2f
         )
     }
 }

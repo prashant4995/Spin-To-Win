@@ -24,10 +24,13 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Remove
+import androidx.compose.material.icons.filled.ShoppingBag
 import androidx.compose.material.icons.filled.Stars
 import androidx.compose.material.icons.filled.VolumeOff
 import androidx.compose.material.icons.filled.VolumeUp
@@ -46,8 +49,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.example.audio.LocalFestiveSoundManager
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -58,9 +59,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.audio.LocalFestiveSoundManager
 import com.example.model.Dish
 import com.example.ui.components.DishIllustration
 import com.example.ui.components.DiyaLamp
+import com.example.ui.components.GaneshaIdolIcon
 import com.example.ui.components.MarigoldGarland
 import com.example.ui.theme.ArtisticAmberContainer
 import com.example.ui.theme.ArtisticAmberGlow
@@ -73,6 +77,7 @@ import com.example.ui.theme.ArtisticMaroonCard
 import com.example.ui.theme.ArtisticMaroonDark
 import com.example.ui.theme.ArtisticMaroonSurface
 import com.example.ui.theme.FestiveCardBorder
+import com.example.ui.theme.GoldLight
 import com.example.ui.theme.GreenSuccess
 
 @Composable
@@ -80,9 +85,13 @@ fun FoodSelectionScreen(
     userName: String,
     nameError: String?,
     selectedDish: Dish?,
+    quantity: Int = 1,
     canProceed: Boolean,
     onNameChanged: (String) -> Unit,
     onDishSelected: (Dish) -> Unit,
+    onQuantityChanged: (Int) -> Unit = {},
+    onIncrementQuantity: () -> Unit = {},
+    onDecrementQuantity: () -> Unit = {},
     onProceedClicked: () -> Unit,
     onOpenHistory: () -> Unit = {},
     modifier: Modifier = Modifier
@@ -170,16 +179,25 @@ fun FoodSelectionScreen(
                         Column(
                             modifier = Modifier
                                 .weight(1f)
-                                .padding(horizontal = 10.dp),
+                                .padding(horizontal = 6.dp),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            Text(
-                                text = "GANESH UTSAV SPECIAL",
-                                color = ArtisticAmberGlow,
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Bold,
-                                letterSpacing = 2.sp
-                            )
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Center
+                            ) {
+                                GaneshaIdolIcon(modifier = Modifier.size(24.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = "|| ॐ श्री गणेशाय नमः ||",
+                                    color = ArtisticAmberGlow,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    letterSpacing = 1.sp
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                GaneshaIdolIcon(modifier = Modifier.size(24.dp))
+                            }
                             Text(
                                 text = if (userName.isNotBlank()) "Namaste, $userName!" else "Namaste & Welcome!",
                                 color = ArtisticAmberGold,
@@ -324,7 +342,7 @@ fun FoodSelectionScreen(
                     }
                 }
 
-                // Step 2: Dish Selection Section
+                // Step 2: Dish Selection Section (Khandvi & Modak @ 30 Rs)
                 Column(
                     modifier = Modifier.fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
@@ -336,14 +354,14 @@ fun FoodSelectionScreen(
                     ) {
                         Column {
                             Text(
-                                text = "STEP 2 OF 2",
+                                text = "STEP 2 OF 3",
                                 color = ArtisticAmberGlow,
                                 fontSize = 10.sp,
                                 fontWeight = FontWeight.Bold,
                                 letterSpacing = 1.5.sp
                             )
                             Text(
-                                text = "Choose Your Target Delicacy",
+                                text = "Select Festive Delicacy",
                                 color = ArtisticCream,
                                 fontSize = 17.sp,
                                 fontWeight = FontWeight.ExtraBold
@@ -357,7 +375,7 @@ fun FoodSelectionScreen(
                                 modifier = Modifier.padding(2.dp)
                             ) {
                                 Text(
-                                    text = "1 Selected",
+                                    text = "${selectedDish.title} Selected",
                                     color = ArtisticMaroonBg,
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 11.sp,
@@ -367,16 +385,17 @@ fun FoodSelectionScreen(
                         }
                     }
 
-                    // 2 Delicacy Cards (Stacked vertically for portrait readability)
+                    // Khandvi Card
                     DishCard(
-                        dish = Dish.KOTHIMBIR_VADI,
-                        isSelected = selectedDish == Dish.KOTHIMBIR_VADI,
-                        onSelect = { onDishSelected(Dish.KOTHIMBIR_VADI) },
+                        dish = Dish.KHANDVI,
+                        isSelected = selectedDish == Dish.KHANDVI,
+                        onSelect = { onDishSelected(Dish.KHANDVI) },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .testTag("card_kothimbir_vadi")
+                            .testTag("card_khandvi")
                     )
 
+                    // Modak Card (Fixed Price ₹30 Rs)
                     DishCard(
                         dish = Dish.MODAK,
                         isSelected = selectedDish == Dish.MODAK,
@@ -385,6 +404,198 @@ fun FoodSelectionScreen(
                             .fillMaxWidth()
                             .testTag("card_modak")
                     )
+                }
+
+                // Step 3: Number of Quantity Selection (Steppers & Presets)
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("quantity_selector_card"),
+                    shape = RoundedCornerShape(20.dp),
+                    color = ArtisticMaroonCard,
+                    border = BorderStroke(1.dp, FestiveCardBorder)
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column {
+                                Text(
+                                    text = "STEP 3 OF 3",
+                                    color = ArtisticAmberGlow,
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    letterSpacing = 1.5.sp
+                                )
+                                Text(
+                                    text = "Number of Quantity",
+                                    color = ArtisticCream,
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+
+                            // Price per unit badge
+                            val unitPrice = selectedDish?.pricePerUnit ?: 30
+                            Surface(
+                                shape = RoundedCornerShape(8.dp),
+                                color = ArtisticAmberContainer,
+                                border = BorderStroke(1.dp, ArtisticAmberGold)
+                            ) {
+                                Text(
+                                    text = "₹$unitPrice / Item",
+                                    color = ArtisticCream,
+                                    fontSize = 11.5.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(14.dp))
+
+                        // Interactive Quantity Stepper Row
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            // Minus Button
+                            Surface(
+                                shape = RoundedCornerShape(12.dp),
+                                color = if (quantity > 1) ArtisticAmberGold else ArtisticMaroonDark,
+                                border = BorderStroke(1.dp, ArtisticAmberSubtle),
+                                modifier = Modifier
+                                    .size(50.dp)
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .clickable(enabled = quantity > 1, onClick = onDecrementQuantity)
+                                    .testTag("btn_qty_minus")
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(
+                                        imageVector = Icons.Default.Remove,
+                                        contentDescription = "Decrease Quantity",
+                                        tint = if (quantity > 1) ArtisticMaroonBg else Color(0xFF6B4A4A),
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                }
+                            }
+
+                            // Quantity Display Box
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text(
+                                    text = "$quantity",
+                                    color = GoldLight,
+                                    fontSize = 32.sp,
+                                    fontWeight = FontWeight.Black
+                                )
+                                Text(
+                                    text = if (quantity == 1) "Plate / Piece" else "Plates / Pieces",
+                                    color = ArtisticCreamSub,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
+
+                            // Plus Button
+                            Surface(
+                                shape = RoundedCornerShape(12.dp),
+                                color = ArtisticAmberGold,
+                                border = BorderStroke(1.dp, ArtisticAmberGold),
+                                modifier = Modifier
+                                    .size(50.dp)
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .clickable(onClick = onIncrementQuantity)
+                                    .testTag("btn_qty_plus")
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(
+                                        imageVector = Icons.Default.Add,
+                                        contentDescription = "Increase Quantity",
+                                        tint = ArtisticMaroonBg,
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(14.dp))
+
+                        // Quick Presets: 1, 2, 3, 5, 10
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            listOf(1, 2, 3, 5, 10).forEach { preset ->
+                                val isSelected = quantity == preset
+                                Surface(
+                                    shape = RoundedCornerShape(10.dp),
+                                    color = if (isSelected) ArtisticAmberGold else ArtisticMaroonDark,
+                                    border = BorderStroke(
+                                        1.dp,
+                                        if (isSelected) ArtisticAmberGold else ArtisticAmberSubtle
+                                    ),
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .clickable { onQuantityChanged(preset) }
+                                ) {
+                                    Text(
+                                        text = "$preset",
+                                        color = if (isSelected) ArtisticMaroonBg else ArtisticCream,
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        textAlign = TextAlign.Center,
+                                        modifier = Modifier.padding(vertical = 8.dp)
+                                    )
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(14.dp))
+
+                        // Live Total Price Calculation Card
+                        val dishPrice = selectedDish?.pricePerUnit ?: 30
+                        val totalPrice = dishPrice * quantity
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = ArtisticMaroonDark,
+                            border = BorderStroke(1.dp, ArtisticAmberSubtle),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 14.dp, vertical = 10.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        imageVector = Icons.Default.ShoppingBag,
+                                        contentDescription = "Price",
+                                        tint = ArtisticAmberGold,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = "Total Price ($quantity × ₹$dishPrice):",
+                                        color = ArtisticCreamSub,
+                                        fontSize = 12.5.sp,
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                }
+
+                                Text(
+                                    text = "₹$totalPrice",
+                                    color = ArtisticAmberGlow,
+                                    fontSize = 18.sp,
+                                    fontWeight = FontWeight.Black
+                                )
+                            }
+                        }
+                    }
                 }
 
                 // Eligibility Status Pill
@@ -406,7 +617,7 @@ fun FoodSelectionScreen(
                         )
                         Spacer(modifier = Modifier.width(10.dp))
                         Text(
-                            text = if (canProceed) "✓ Ready to Spin! 1 Free Spin Unlocked" else "Enter name and select a delicacy to unlock spin",
+                            text = if (canProceed) "✓ Ready to Spin! 1 Free Spin Unlocked + QR Payment Available" else "Enter name and select a delicacy to unlock spin",
                             color = ArtisticCream,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Medium
@@ -530,21 +741,18 @@ private fun DishCard(
                             )
                         }
 
-                        if (isSelected) {
-                            Box(
-                                modifier = Modifier
-                                    .size(24.dp)
-                                    .clip(CircleShape)
-                                    .background(ArtisticAmberGold),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.CheckCircle,
-                                    contentDescription = "Selected",
-                                    tint = ArtisticMaroonBg,
-                                    modifier = Modifier.size(20.dp)
-                                )
-                            }
+                        // Fixed Price Pill (₹30 Rs)
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = ArtisticAmberGold
+                        ) {
+                            Text(
+                                text = "₹${dish.pricePerUnit} Rs",
+                                color = ArtisticMaroonBg,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Black,
+                                modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp)
+                            )
                         }
                     }
 
@@ -609,7 +817,7 @@ private fun DishCard(
                 border = BorderStroke(1.dp, if (isSelected) ArtisticAmberGold else ArtisticAmberSubtle)
             ) {
                 Text(
-                    text = if (isSelected) "✓ SELECTED TARGET PRIZE" else "TAP TO SELECT AS TARGET PRIZE",
+                    text = if (isSelected) "✓ SELECTED TARGET DELICACY (₹${dish.pricePerUnit})" else "TAP TO SELECT AS TARGET (₹${dish.pricePerUnit})",
                     color = if (isSelected) ArtisticMaroonBg else ArtisticCreamSub.copy(alpha = 0.7f),
                     fontWeight = FontWeight.Bold,
                     fontSize = 11.5.sp,
@@ -620,3 +828,4 @@ private fun DishCard(
         }
     }
 }
+

@@ -218,15 +218,11 @@ fun SpinWheelScreen(
                         landingPulseAlpha = 1f
                     )
 
-                    if (isWin) {
-                        confettiTriggerKey = System.currentTimeMillis()
-                        isWinCelebrationVisible = true
-                        soundManager?.playWinChime()
-                        delay(2400)
-                    } else {
-                        soundManager?.playTryAgainSound()
-                        delay(1200)
-                    }
+                    confettiTriggerKey = System.currentTimeMillis()
+                    isWinCelebrationVisible = true
+                    soundManager?.playWinChime()
+                    soundManager?.announceWinner(userName, selectedDish?.title ?: "Prasad")
+                    delay(3000)
 
                     onSpinAnimationFinished(targetAngle)
                 }
@@ -420,7 +416,7 @@ fun SpinWheelScreen(
                                 WheelSpinPhase.ACCELERATION -> "TORQUE BUILDUP • ACCELERATING"
                                 WheelSpinPhase.DECELERATION -> "VISCOUS FRICTION • ${(physicsState.angularVelocityDegPerSec).toInt()}°/s"
                                 WheelSpinPhase.FINAL_LANDING -> "HARMONIC DETENT • LOCKING PRIZE..."
-                                WheelSpinPhase.LANDED -> if (physicsState.isLandedPrizeWin) "JACKPOT LANDED • ${physicsState.landedSector?.subText ?: "WIN"}" else "LANDED • ${physicsState.landedSector?.subText ?: "TRY AGAIN"}"
+                                WheelSpinPhase.LANDED -> "JACKPOT LANDED • ${physicsState.landedSector?.subText ?: "WINNER!"}"
                             },
                             color = when (physicsState.phase) {
                                 WheelSpinPhase.IDLE -> ArtisticCreamSub
@@ -505,32 +501,6 @@ fun SpinWheelScreen(
                                 )
                             }
                         }
-                    }
-                }
-
-                // Fair Odds Note
-                Surface(
-                    shape = RoundedCornerShape(12.dp),
-                    color = ArtisticMaroonDark,
-                    border = BorderStroke(0.8.dp, ArtisticAmberSubtle),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Info,
-                            contentDescription = "Info",
-                            tint = ArtisticAmberGold,
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "Realistic Physics: Progressive Torque • Viscous Decay • Spring Detent Settling",
-                            color = ArtisticCreamSub,
-                            fontSize = 10.5.sp
-                        )
                     }
                 }
 
@@ -638,10 +608,16 @@ fun SpinWheelScreen(
                         letterSpacing = 1.2.sp
                     )
                     Text(
-                        text = "Congratulations! You won free ${selectedDish?.title ?: "Festive Delicacy"}!",
+                        text = if (userName.isNotBlank()) "Congratulations, $userName!" else "Congratulations!",
+                        color = ArtisticAmberGlow,
+                        fontSize = 17.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = "You won 1 Free ${selectedDish?.title ?: "Festive Delicacy"}!",
                         color = ArtisticCream,
                         fontSize = 14.sp,
-                        fontWeight = FontWeight.SemiBold
+                        fontWeight = FontWeight.Medium
                     )
                 }
             }

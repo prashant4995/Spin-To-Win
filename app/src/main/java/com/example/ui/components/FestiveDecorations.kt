@@ -25,6 +25,10 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.res.painterResource
+import com.example.R
 import com.example.ui.theme.GoldAccent
 import com.example.ui.theme.GoldDark
 import com.example.ui.theme.GoldLight
@@ -32,6 +36,21 @@ import com.example.ui.theme.MaroonRoyal
 import com.example.ui.theme.SaffronDark
 import com.example.ui.theme.SaffronPrimary
 import kotlin.random.Random
+
+/**
+ * Sacred Ganesha Idol Icon graphic.
+ */
+@Composable
+fun GaneshaIdolIcon(
+    modifier: Modifier = Modifier,
+    contentDescription: String = "Lord Ganesha Idol"
+) {
+    Image(
+        painter = painterResource(id = R.drawable.ic_ganesha_idol),
+        contentDescription = contentDescription,
+        modifier = modifier
+    )
+}
 
 /**
  * Festive Diya (Indian Oil Lamp) with animated glowing flame.
@@ -200,11 +219,14 @@ fun MarigoldGarland(modifier: Modifier = Modifier) {
 }
 
 @Composable
-fun ConfettiOverlay(modifier: Modifier = Modifier) {
+fun ConfettiOverlay(
+    trigger: Any? = Unit,
+    modifier: Modifier = Modifier
+) {
     ParticleConfetti(
-        trigger = Unit,
+        trigger = trigger,
         modifier = modifier.fillMaxSize(),
-        particleCount = 140,
+        particleCount = 160,
         isCenterBurst = true,
         isDualCannons = true,
         isRainCascade = true

@@ -1,15 +1,13 @@
 package com.example.ui.screens
 
-import android.content.ClipData
-import android.content.ClipboardManager
 import android.content.Context
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -28,16 +26,18 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.AttachMoney
 import androidx.compose.material.icons.filled.Casino
 import androidx.compose.material.icons.filled.Celebration
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.CurrencyRupee
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.SentimentSatisfied
+import androidx.compose.material.icons.filled.ShoppingBag
 import androidx.compose.material.icons.filled.Stars
 import androidx.compose.material.icons.filled.VolumeOff
 import androidx.compose.material.icons.filled.VolumeUp
@@ -90,9 +90,11 @@ import com.example.ui.theme.ArtisticMaroonCard
 import com.example.ui.theme.ArtisticMaroonDark
 import com.example.ui.theme.ArtisticMaroonSurface
 import com.example.ui.theme.FestiveCardBorder
+import com.example.ui.theme.GreenSuccess
 import com.example.ui.theme.MaroonRoyal
 import com.example.ui.theme.SaffronDark
 import com.example.ui.theme.SaffronPrimary
+import com.example.viewmodel.HistoryFilterType
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -100,10 +102,17 @@ import java.util.Locale
 @Composable
 fun SpinHistoryScreen(
     historyList: List<SpinHistoryEntity>,
-    filterOnlyWins: Boolean,
-    totalSpins: Int,
-    totalWins: Int,
-    onFilterChanged: (Boolean) -> Unit,
+    filterType: HistoryFilterType = HistoryFilterType.ALL,
+    totalSpins: Int = 0,
+    totalWins: Int = 0,
+    totalItemsSold: Int = 0,
+    totalItemsFree: Int = 0,
+    totalRevenue: Int = 0,
+    modakSoldCount: Int = 0,
+    modakFreeCount: Int = 0,
+    khandviSoldCount: Int = 0,
+    khandviFreeCount: Int = 0,
+    onFilterTypeChanged: (HistoryFilterType) -> Unit = {},
     onDeleteHistoryItem: (Long) -> Unit,
     onClearAllHistory: () -> Unit,
     onNavigateBack: () -> Unit,
@@ -116,8 +125,12 @@ fun SpinHistoryScreen(
 
     var showClearDialog by remember { mutableStateOf(false) }
 
-    val displayList = remember(historyList, filterOnlyWins) {
-        if (filterOnlyWins) historyList.filter { it.isWin } else historyList
+    val displayList = remember(historyList, filterType) {
+        when (filterType) {
+            HistoryFilterType.ALL -> historyList
+            HistoryFilterType.SOLD -> historyList.filter { it.isSold }
+            HistoryFilterType.FREE -> historyList.filter { it.isFree || it.isWin }
+        }
     }
 
     Box(
@@ -149,7 +162,7 @@ fun SpinHistoryScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                    .padding(horizontal = 16.dp, vertical = 6.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
@@ -174,17 +187,17 @@ fun SpinHistoryScreen(
 
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
-                        text = "Winnings & History",
+                        text = "Sales & Free Treats History",
                         color = ArtisticAmberGold,
-                        fontSize = 20.sp,
+                        fontSize = 18.sp,
                         fontWeight = FontWeight.Bold,
                         fontFamily = FontFamily.Serif
                     )
                     Text(
-                        text = "विजय आणि इतिहास",
+                        text = "विक्री आणि मोफत प्रसाद इतिहास",
                         color = ArtisticCreamSub,
                         fontSize = 11.sp,
-                        letterSpacing = 1.sp
+                        letterSpacing = 0.5.sp
                     )
                 }
 
@@ -229,147 +242,176 @@ fun SpinHistoryScreen(
                 }
             }
 
-            // --- SUMMARY STATS BANNER ---
+            // --- SUMMARY STATS BANNER (Requirement 6: Sold & Free Items History) ---
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 6.dp)
-                    .shadow(12.dp, RoundedCornerShape(20.dp)),
-                shape = RoundedCornerShape(20.dp),
+                    .padding(horizontal = 14.dp, vertical = 4.dp)
+                    .shadow(10.dp, RoundedCornerShape(18.dp)),
+                shape = RoundedCornerShape(18.dp),
                 colors = CardDefaults.cardColors(containerColor = ArtisticMaroonCard),
                 border = BorderStroke(1.5.dp, FestiveCardBorder)
             ) {
-                Row(
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(
-                            Brush.horizontalGradient(
-                                listOf(
-                                    ArtisticMaroonCard,
-                                    ArtisticMaroonSurface
-                                )
-                            )
-                        )
-                        .padding(horizontal = 16.dp, vertical = 14.dp),
-                    horizontalArrangement = Arrangement.SpaceEvenly,
-                    verticalAlignment = Alignment.CenterVertically
+                        .padding(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    // Total Spins
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                imageVector = Icons.Default.Casino,
-                                contentDescription = null,
-                                tint = SaffronPrimary,
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
+                    // Top Metric Row: Sold, Free, Revenue
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceEvenly,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        // Total Sold
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    imageVector = Icons.Default.ShoppingBag,
+                                    contentDescription = null,
+                                    tint = SaffronPrimary,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = "$totalItemsSold",
+                                    color = SaffronPrimary,
+                                    fontSize = 20.sp,
+                                    fontWeight = FontWeight.Black
+                                )
+                            }
                             Text(
-                                text = "$totalSpins",
+                                text = "Items Sold",
+                                color = ArtisticCreamSub,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+
+                        // Divider
+                        Box(
+                            modifier = Modifier
+                                .width(1.dp)
+                                .height(28.dp)
+                                .background(ArtisticAmberSubtle)
+                        )
+
+                        // Total Free Prasad
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    imageVector = Icons.Default.Celebration,
+                                    contentDescription = null,
+                                    tint = ArtisticAmberGold,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = "$totalItemsFree",
+                                    color = ArtisticAmberGold,
+                                    fontSize = 20.sp,
+                                    fontWeight = FontWeight.Black
+                                )
+                            }
+                            Text(
+                                text = "Free Prasad Won",
+                                color = ArtisticCreamSub,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+
+                        // Divider
+                        Box(
+                            modifier = Modifier
+                                .width(1.dp)
+                                .height(28.dp)
+                                .background(ArtisticAmberSubtle)
+                        )
+
+                        // Total Revenue
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    text = "₹",
+                                    color = GreenSuccess,
+                                    fontSize = 18.sp,
+                                    fontWeight = FontWeight.Black
+                                )
+                                Text(
+                                    text = "$totalRevenue",
+                                    color = GreenSuccess,
+                                    fontSize = 20.sp,
+                                    fontWeight = FontWeight.Black
+                                )
+                            }
+                            Text(
+                                text = "Total Revenue",
+                                color = ArtisticCreamSub,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                    }
+
+                    // Delicacy specific breakdown bar: Modak & Khandvi
+                    Surface(
+                        shape = RoundedCornerShape(10.dp),
+                        color = ArtisticMaroonDark,
+                        border = BorderStroke(0.8.dp, ArtisticAmberSubtle),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 10.dp, vertical = 6.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "🥟 Modak: $modakSoldCount Sold • $modakFreeCount Free",
                                 color = ArtisticCream,
-                                fontSize = 20.sp,
-                                fontWeight = FontWeight.Black
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.SemiBold
                             )
-                        }
-                        Text(
-                            text = "Total Spins",
-                            color = ArtisticCreamSub,
-                            fontSize = 11.sp
-                        )
-                    }
-
-                    // Divider
-                    Box(
-                        modifier = Modifier
-                            .width(1.dp)
-                            .height(32.dp)
-                            .background(ArtisticAmberSubtle)
-                    )
-
-                    // Total Wins
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                imageVector = Icons.Default.EmojiEvents,
-                                contentDescription = null,
-                                tint = ArtisticAmberGold,
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
                             Text(
-                                text = "$totalWins",
+                                text = "🥮 Khandvi: $khandviSoldCount Sold • $khandviFreeCount Free",
                                 color = ArtisticAmberGold,
-                                fontSize = 20.sp,
-                                fontWeight = FontWeight.Black
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.SemiBold
                             )
                         }
-                        Text(
-                            text = "Free Dishes Won",
-                            color = ArtisticCreamSub,
-                            fontSize = 11.sp
-                        )
-                    }
-
-                    // Divider
-                    Box(
-                        modifier = Modifier
-                            .width(1.dp)
-                            .height(32.dp)
-                            .background(ArtisticAmberSubtle)
-                    )
-
-                    // Win Rate %
-                    val winRate = if (totalSpins > 0) (totalWins * 100 / totalSpins) else 0
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                imageVector = Icons.Default.Stars,
-                                contentDescription = null,
-                                tint = Color(0xFF69F0AE),
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                text = "$winRate%",
-                                color = Color(0xFF69F0AE),
-                                fontSize = 20.sp,
-                                fontWeight = FontWeight.Black
-                            )
-                        }
-                        Text(
-                            text = "Win Rate",
-                            color = ArtisticCreamSub,
-                            fontSize = 11.sp
-                        )
                     }
                 }
             }
 
-            // --- FILTER TABS ---
+            // --- FILTER TABS: All / Sold / Free ---
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 6.dp),
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    .padding(horizontal = 14.dp, vertical = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
+                // All Tab
                 FilterChip(
-                    selected = !filterOnlyWins,
+                    selected = filterType == HistoryFilterType.ALL,
                     onClick = {
                         soundManager?.playClickSound()
-                        onFilterChanged(false)
+                        onFilterTypeChanged(HistoryFilterType.ALL)
                     },
                     label = {
                         Text(
-                            text = "All Spins (${historyList.size})",
-                            fontSize = 12.sp,
-                            fontWeight = if (!filterOnlyWins) FontWeight.Bold else FontWeight.Medium
+                            text = "All (${historyList.size})",
+                            fontSize = 11.5.sp,
+                            fontWeight = if (filterType == HistoryFilterType.ALL) FontWeight.Bold else FontWeight.Medium
                         )
                     },
                     leadingIcon = {
                         Icon(
                             imageVector = Icons.Default.History,
                             contentDescription = null,
-                            modifier = Modifier.size(16.dp)
+                            modifier = Modifier.size(14.dp)
                         )
                     },
                     colors = FilterChipDefaults.filterChipColors(
@@ -380,28 +422,25 @@ fun SpinHistoryScreen(
                         labelColor = ArtisticCreamSub,
                         iconColor = ArtisticCreamSub
                     ),
-                    border = BorderStroke(1.dp, if (!filterOnlyWins) ArtisticAmberGold else ArtisticAmberSubtle),
-                    modifier = Modifier.testTag("filter_all_spins")
+                    border = BorderStroke(1.dp, if (filterType == HistoryFilterType.ALL) ArtisticAmberGold else ArtisticAmberSubtle),
+                    modifier = Modifier
+                        .weight(1f)
+                        .testTag("filter_all_spins")
                 )
 
+                // Sold Items Tab
+                val soldTotal = historyList.count { it.isSold }
                 FilterChip(
-                    selected = filterOnlyWins,
+                    selected = filterType == HistoryFilterType.SOLD,
                     onClick = {
                         soundManager?.playClickSound()
-                        onFilterChanged(true)
+                        onFilterTypeChanged(HistoryFilterType.SOLD)
                     },
                     label = {
                         Text(
-                            text = "🏆 Winnings ($totalWins)",
-                            fontSize = 12.sp,
-                            fontWeight = if (filterOnlyWins) FontWeight.Bold else FontWeight.Medium
-                        )
-                    },
-                    leadingIcon = {
-                        Icon(
-                            imageVector = Icons.Default.Celebration,
-                            contentDescription = null,
-                            modifier = Modifier.size(16.dp)
+                            text = "💰 Sold ($soldTotal)",
+                            fontSize = 11.5.sp,
+                            fontWeight = if (filterType == HistoryFilterType.SOLD) FontWeight.Bold else FontWeight.Medium
                         )
                     },
                     colors = FilterChipDefaults.filterChipColors(
@@ -412,15 +451,46 @@ fun SpinHistoryScreen(
                         labelColor = ArtisticCreamSub,
                         iconColor = ArtisticCreamSub
                     ),
-                    border = BorderStroke(1.dp, if (filterOnlyWins) ArtisticAmberGold else ArtisticAmberSubtle),
-                    modifier = Modifier.testTag("filter_winnings_only")
+                    border = BorderStroke(1.dp, if (filterType == HistoryFilterType.SOLD) ArtisticAmberGold else ArtisticAmberSubtle),
+                    modifier = Modifier
+                        .weight(1f)
+                        .testTag("filter_sold_items")
+                )
+
+                // Free Prasad Tab
+                val freeTotal = historyList.count { it.isFree || it.isWin }
+                FilterChip(
+                    selected = filterType == HistoryFilterType.FREE,
+                    onClick = {
+                        soundManager?.playClickSound()
+                        onFilterTypeChanged(HistoryFilterType.FREE)
+                    },
+                    label = {
+                        Text(
+                            text = "🎁 Free ($freeTotal)",
+                            fontSize = 11.5.sp,
+                            fontWeight = if (filterType == HistoryFilterType.FREE) FontWeight.Bold else FontWeight.Medium
+                        )
+                    },
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = MaroonRoyal,
+                        selectedLabelColor = ArtisticAmberGold,
+                        selectedLeadingIconColor = ArtisticAmberGold,
+                        containerColor = ArtisticMaroonCard,
+                        labelColor = ArtisticCreamSub,
+                        iconColor = ArtisticCreamSub
+                    ),
+                    border = BorderStroke(1.dp, if (filterType == HistoryFilterType.FREE) ArtisticAmberGold else ArtisticAmberSubtle),
+                    modifier = Modifier
+                        .weight(1f)
+                        .testTag("filter_free_items")
                 )
             }
 
             // --- HISTORY LIST OR EMPTY STATE ---
             if (displayList.isEmpty()) {
                 EmptyHistoryView(
-                    filterOnlyWins = filterOnlyWins,
+                    filterType = filterType,
                     onStartSpin = {
                         soundManager?.playClickSound()
                         onStartSpin()
@@ -433,8 +503,8 @@ fun SpinHistoryScreen(
                         .fillMaxWidth()
                         .weight(1f)
                         .testTag("spin_history_list"),
-                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 6.dp, bottom = 24.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                    contentPadding = PaddingValues(start = 14.dp, end = 14.dp, top = 4.dp, bottom = 20.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     items(
                         items = displayList,
@@ -442,13 +512,6 @@ fun SpinHistoryScreen(
                     ) { item ->
                         SpinHistoryCard(
                             item = item,
-                            onCopyCode = { code ->
-                                val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                                val clip = ClipData.newPlainText("Claim Voucher", code)
-                                clipboard.setPrimaryClip(clip)
-                                soundManager?.playClaimChime()
-                                Toast.makeText(context, "Voucher code '$code' copied to clipboard!", Toast.LENGTH_SHORT).show()
-                            },
                             onDelete = {
                                 soundManager?.playClickSound()
                                 onDeleteHistoryItem(item.id)
@@ -473,7 +536,7 @@ fun SpinHistoryScreen(
                 },
                 title = {
                     Text(
-                        text = "Clear Spin History?",
+                        text = "Clear All Records?",
                         color = ArtisticAmberGold,
                         fontWeight = FontWeight.Bold,
                         fontFamily = FontFamily.Serif
@@ -481,7 +544,7 @@ fun SpinHistoryScreen(
                 },
                 text = {
                     Text(
-                        text = "This will permanently remove all previous spin records and saved winning voucher codes from the local database.",
+                        text = "This will permanently clear all sold orders, free winnings, and revenue records from local memory.",
                         color = ArtisticCream,
                         fontSize = 14.sp
                     )
@@ -493,7 +556,7 @@ fun SpinHistoryScreen(
                         onClick = {
                             showClearDialog = false
                             onClearAllHistory()
-                            Toast.makeText(context, "Spin history cleared", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, "All history records cleared", Toast.LENGTH_SHORT).show()
                         },
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD32F2F)),
                         shape = RoundedCornerShape(12.dp),
@@ -515,30 +578,30 @@ fun SpinHistoryScreen(
 }
 
 /**
- * Rich Material 3 card presenting an individual spin history record.
+ * Rich Material 3 card presenting an individual sales/free dish history record.
  */
 @Composable
 private fun SpinHistoryCard(
     item: SpinHistoryEntity,
-    onCopyCode: (String) -> Unit,
     onDelete: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val isWin = item.isWin
+    val isFree = item.isFree || item.isWin
+    val isSold = item.isSold
     val formattedDate = remember(item.timestamp) {
-        val sdf = SimpleDateFormat("dd MMM yyyy • hh:mm a", Locale.getDefault())
+        val sdf = SimpleDateFormat("dd MMM • hh:mm a", Locale.getDefault())
         sdf.format(Date(item.timestamp))
     }
 
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .shadow(6.dp, RoundedCornerShape(18.dp)),
-        shape = RoundedCornerShape(18.dp),
+            .shadow(4.dp, RoundedCornerShape(16.dp)),
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = ArtisticMaroonCard),
         border = BorderStroke(
-            width = if (isWin) 1.8.dp else 1.dp,
-            color = if (isWin) ArtisticAmberGold else FestiveCardBorder
+            width = if (isFree) 1.5.dp else if (isSold) 1.2.dp else 1.dp,
+            color = if (isFree) ArtisticAmberGold else if (isSold) GreenSuccess else FestiveCardBorder
         )
     ) {
         Column(
@@ -546,20 +609,14 @@ private fun SpinHistoryCard(
                 .fillMaxWidth()
                 .background(
                     Brush.verticalGradient(
-                        colors = if (isWin) {
-                            listOf(
-                                ArtisticMaroonCard,
-                                ArtisticMaroonSurface
-                            )
+                        colors = if (isFree) {
+                            listOf(ArtisticMaroonCard, ArtisticMaroonSurface)
                         } else {
-                            listOf(
-                                ArtisticMaroonCard,
-                                ArtisticMaroonBg
-                            )
+                            listOf(ArtisticMaroonCard, ArtisticMaroonBg)
                         }
                     )
                 )
-                .padding(14.dp)
+                .padding(12.dp)
         ) {
             // Header Row: Status Badge + Date + Delete Button
             Row(
@@ -569,25 +626,52 @@ private fun SpinHistoryCard(
             ) {
                 // Status Badge
                 Surface(
-                    shape = RoundedCornerShape(12.dp),
-                    color = if (isWin) MaroonRoyal else SaffronDark.copy(alpha = 0.6f),
-                    border = BorderStroke(1.dp, if (isWin) ArtisticAmberGold else SaffronPrimary)
+                    shape = RoundedCornerShape(8.dp),
+                    color = when {
+                        isFree -> MaroonRoyal
+                        isSold -> GreenSuccess.copy(alpha = 0.2f)
+                        else -> SaffronDark.copy(alpha = 0.5f)
+                    },
+                    border = BorderStroke(
+                        1.dp,
+                        when {
+                            isFree -> ArtisticAmberGold
+                            isSold -> GreenSuccess
+                            else -> SaffronPrimary
+                        }
+                    )
                 ) {
                     Row(
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
-                            imageVector = if (isWin) Icons.Default.Celebration else Icons.Default.Refresh,
+                            imageVector = when {
+                                isFree -> Icons.Default.Celebration
+                                isSold -> Icons.Default.CheckCircle
+                                else -> Icons.Default.Refresh
+                            },
                             contentDescription = null,
-                            tint = if (isWin) ArtisticAmberGold else ArtisticCream,
-                            modifier = Modifier.size(14.dp)
+                            tint = when {
+                                isFree -> ArtisticAmberGold
+                                isSold -> GreenSuccess
+                                else -> ArtisticCream
+                            },
+                            modifier = Modifier.size(13.dp)
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
-                            text = if (isWin) "JACKPOT WIN" else "TRY AGAIN",
-                            color = if (isWin) ArtisticAmberGold else ArtisticCream,
-                            fontSize = 11.sp,
+                            text = when {
+                                isFree -> "🎁 FREE PRASAD"
+                                isSold -> "💰 SOLD (PAID VIA QR)"
+                                else -> "TRY AGAIN SPIN"
+                            },
+                            color = when {
+                                isFree -> ArtisticAmberGold
+                                isSold -> GreenSuccess
+                                else -> ArtisticCream
+                            },
+                            fontSize = 10.sp,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 0.5.sp
                         )
@@ -598,123 +682,81 @@ private fun SpinHistoryCard(
                     Text(
                         text = formattedDate,
                         color = ArtisticCreamSub,
-                        fontSize = 11.sp
+                        fontSize = 10.5.sp
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     IconButton(
                         onClick = onDelete,
-                        modifier = Modifier.size(28.dp)
+                        modifier = Modifier.size(26.dp)
                     ) {
                         Icon(
                             imageVector = Icons.Default.Delete,
                             contentDescription = "Delete record",
                             tint = ArtisticCreamSub.copy(alpha = 0.7f),
-                            modifier = Modifier.size(16.dp)
+                            modifier = Modifier.size(15.dp)
                         )
                     }
                 }
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(6.dp))
 
-            // Body: Guest Name & Dish Information
+            // Body: Guest Name, Quantity, Delicacy & Total Amount
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Dish Emoji Avatar or Icon
+                // Dish Emoji Avatar
                 Box(
                     modifier = Modifier
-                        .size(46.dp)
+                        .size(42.dp)
                         .clip(CircleShape)
-                        .background(if (isWin) ArtisticAmberContainer else ArtisticMaroonSurface),
+                        .background(if (isFree) ArtisticAmberContainer else ArtisticMaroonDark),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = item.dishEmoji ?: if (isWin) "🍲" else "🎡",
-                        fontSize = 22.sp
+                        text = item.dishEmoji ?: if (isFree) "🥟" else "🥮",
+                        fontSize = 20.sp
                     )
                 }
 
-                Spacer(modifier = Modifier.width(12.dp))
+                Spacer(modifier = Modifier.width(10.dp))
 
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = if (isWin) "Won: ${item.dishName ?: "Festive Delicacy"}" else "Played by ${item.userName}",
-                        color = if (isWin) ArtisticAmberGold else ArtisticCream,
-                        fontSize = 15.sp,
+                        text = "${item.quantity}x ${item.dishName ?: "Delicacy"} • ${item.userName}",
+                        color = if (isFree) ArtisticAmberGold else ArtisticCream,
+                        fontSize = 14.sp,
                         fontWeight = FontWeight.Bold,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
-                    if (isWin && !item.dishNativeTitle.isNullOrBlank()) {
-                        Text(
-                            text = "${item.dishNativeTitle} • Winner: ${item.userName}",
-                            color = ArtisticCreamSub,
-                            fontSize = 12.sp,
-                            fontStyle = FontStyle.Italic,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    } else if (!isWin) {
-                        Text(
-                            text = "Better luck on the next festive spin!",
-                            color = ArtisticCreamSub,
-                            fontSize = 12.sp
-                        )
-                    }
+                    Text(
+                        text = if (isFree) {
+                            "Free Lucky Winning Prasad • ₹0 (Worth ₹${item.quantity * item.unitPrice})"
+                        } else if (isSold) {
+                            "Paid via UPI QR • ₹${item.totalAmount} (${item.quantity} × ₹${item.unitPrice})"
+                        } else {
+                            "${item.quantity} items requested @ ₹${item.unitPrice} each"
+                        },
+                        color = ArtisticCreamSub,
+                        fontSize = 11.5.sp
+                    )
                 }
-            }
 
-            // If Win: Voucher Claim Code Section
-            if (isWin && item.claimCode.isNotBlank()) {
-                Spacer(modifier = Modifier.height(10.dp))
+                // Amount Pill
                 Surface(
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(8.dp),
                     color = ArtisticMaroonDark,
-                    border = BorderStroke(1.dp, ArtisticAmberGold.copy(alpha = 0.6f)),
-                    modifier = Modifier.fillMaxWidth()
+                    border = BorderStroke(0.8.dp, if (isSold) GreenSuccess else ArtisticAmberSubtle)
                 ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 12.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Column {
-                            Text(
-                                text = "CLAIM VOUCHER CODE",
-                                color = ArtisticAmberGold,
-                                fontSize = 9.sp,
-                                fontWeight = FontWeight.Bold,
-                                letterSpacing = 1.sp
-                            )
-                            Text(
-                                text = item.claimCode,
-                                color = ArtisticCream,
-                                fontSize = 15.sp,
-                                fontWeight = FontWeight.Black,
-                                letterSpacing = 1.5.sp,
-                                fontFamily = FontFamily.Monospace
-                            )
-                        }
-
-                        IconButton(
-                            onClick = { onCopyCode(item.claimCode) },
-                            modifier = Modifier
-                                .size(32.dp)
-                                .clip(CircleShape)
-                                .background(ArtisticAmberGold)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.ContentCopy,
-                                contentDescription = "Copy Voucher Code",
-                                tint = ArtisticMaroonDark,
-                                modifier = Modifier.size(16.dp)
-                            )
-                        }
-                    }
+                    Text(
+                        text = if (isFree) "FREE" else "₹${if (isSold) item.totalAmount else item.quantity * item.unitPrice}",
+                        color = if (isFree) ArtisticAmberGold else if (isSold) GreenSuccess else ArtisticCream,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Black,
+                        modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp)
+                    )
                 }
             }
         }
@@ -726,25 +768,29 @@ private fun SpinHistoryCard(
  */
 @Composable
 private fun EmptyHistoryView(
-    filterOnlyWins: Boolean,
+    filterType: HistoryFilterType,
     onStartSpin: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .padding(32.dp),
+            .padding(28.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        DiyaLamp(modifier = Modifier.size(64.dp))
+        DiyaLamp(modifier = Modifier.size(56.dp))
 
-        Spacer(modifier = Modifier.height(18.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
         Text(
-            text = if (filterOnlyWins) "No Winnings Yet" else "No Spin History",
+            text = when (filterType) {
+                HistoryFilterType.ALL -> "No Records Yet"
+                HistoryFilterType.SOLD -> "No Sold Items Yet"
+                HistoryFilterType.FREE -> "No Free Prasad Won Yet"
+            },
             color = ArtisticAmberGold,
-            fontSize = 20.sp,
+            fontSize = 18.sp,
             fontWeight = FontWeight.Bold,
             fontFamily = FontFamily.Serif
         )
@@ -752,18 +798,14 @@ private fun EmptyHistoryView(
         Spacer(modifier = Modifier.height(6.dp))
 
         Text(
-            text = if (filterOnlyWins) {
-                "Spin the 3D lucky wheel to unlock free Maharashtrian delicacies & collect your winning vouchers!"
-            } else {
-                "Your spin history and winning vouchers will be recorded here locally in real-time."
-            },
+            text = "Customer orders, QR payments, and winning free delicacies will appear here in real-time.",
             color = ArtisticCreamSub,
-            fontSize = 13.sp,
+            fontSize = 12.5.sp,
             textAlign = TextAlign.Center,
-            lineHeight = 18.sp
+            lineHeight = 17.sp
         )
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(20.dp))
 
         Button(
             onClick = onStartSpin,
@@ -771,8 +813,8 @@ private fun EmptyHistoryView(
                 containerColor = ArtisticAmberGold,
                 contentColor = ArtisticMaroonDark
             ),
-            shape = RoundedCornerShape(16.dp),
-            contentPadding = PaddingValues(horizontal = 24.dp, vertical = 12.dp),
+            shape = RoundedCornerShape(14.dp),
+            contentPadding = PaddingValues(horizontal = 20.dp, vertical = 10.dp),
             modifier = Modifier.testTag("empty_history_spin_button")
         ) {
             Icon(
@@ -782,9 +824,9 @@ private fun EmptyHistoryView(
             )
             Spacer(modifier = Modifier.width(8.dp))
             Text(
-                text = "Spin The Wheel Now",
+                text = "Take Next Customer / Spin",
                 fontWeight = FontWeight.Bold,
-                fontSize = 14.sp
+                fontSize = 13.sp
             )
         }
     }
