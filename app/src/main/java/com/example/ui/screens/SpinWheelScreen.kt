@@ -149,7 +149,8 @@ fun SpinWheelScreen(
                     val totalDelta = targetAngle - startAngle
                     val durationMs = WheelPhysicsEngine.DEFAULT_SPIN_DURATION_MS
                     val startTime = System.currentTimeMillis()
-                    var lastTickTime = 0L
+                    var wasPegCrossing = false
+                    var lastClickTime = 0L
 
                     soundManager?.playSpinSound()
 
@@ -162,6 +163,17 @@ fun SpinWheelScreen(
                         val (pointerDeflection, isPegCrossing) = WheelPhysicsEngine.calculatePointerDeflection(currentAngle, velocity)
                         val landedIndex = WheelPhysicsEngine.calculateLandedSectorIndex(currentAngle, sectors.size)
                         val landedSector = sectors.getOrNull(landedIndex) ?: sectors[0]
+
+                        // Real-time clicking sound during wheel rotation as pins hit flapper
+                        if (isPegCrossing && !wasPegCrossing) {
+                            val now = System.currentTimeMillis()
+                            if (now - lastClickTime > 22L) {
+                                lastClickTime = now
+                                val speedFactor = (velocity / 1000f).coerceIn(0.5f, 1.4f)
+                                soundManager?.playWheelClick(speedFactor)
+                            }
+                        }
+                        wasPegCrossing = isPegCrossing
 
                         val phase = when {
                             rawProgress < WheelPhysicsEngine.PHASE_ACCEL_END -> WheelSpinPhase.ACCELERATION
@@ -216,11 +228,11 @@ fun SpinWheelScreen(
                     if (isWin) {
                         confettiTriggerKey = System.currentTimeMillis()
                         isWinCelebrationVisible = true
-                        soundManager?.playWinChime()
+                        soundManager?.playCelebrationSound()
                         soundManager?.announceWinner(userName, selectedDish?.title ?: "Prasad")
                         delay(2800)
                     } else {
-                        soundManager?.playClickSound()
+                        soundManager?.playTryAgainSound()
                         delay(1600)
                     }
 

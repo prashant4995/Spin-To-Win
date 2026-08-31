@@ -95,9 +95,9 @@ fun RewardResultScreen(
     LaunchedEffect(result) {
         if (result != null) {
             if (result.isWin) {
-                soundManager?.playWinChime()
+                soundManager?.playCelebrationSound()
             } else {
-                soundManager?.playClickSound()
+                soundManager?.playTryAgainSound()
             }
         }
     }
