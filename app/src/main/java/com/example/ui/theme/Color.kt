@@ -2,50 +2,70 @@ package com.example.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-// "Artistic Flair" Theme Palette
-val ArtisticMaroonBg = Color(0xFF380202)       // #380202 Deep Artisanal Maroon Canvas
-val ArtisticMaroonDark = Color(0xFF240101)     // #240101 Dark Wine Base
-val ArtisticMaroonSurface = Color(0xFF4A0A0A)  // #4A0A0A Warm Wine Surface
-val ArtisticMaroonCard = Color(0xFF2E0404)     // #2E0404 Card Container
-val ArtisticMaroonSector = Color(0xFF4C0808)   // #4C0808 Wheel Sector Contrast
+// White Background & Blue Button Theme Palette
+val AppWhiteBg = Color(0xFFFFFFFF)            // Pure White Canvas Background
+val AppWhiteBgSurface = Color(0xFFF8FAFC)     // Soft Slate-50 Tinted Surface
+val AppCardBg = Color(0xFFFFFFFF)             // Pure White Card Container
+val AppCardBgSubtle = Color(0xFFF1F5F9)       // Slate-100 Subtle Fill
+val AppSurfaceSoft = Color(0xFFEFF6FF)         // Blue-50 Soft Tint for Inputs/Badges
+val AppCardBorder = Color(0xFFE2E8F0)         // Clean Slate-200 Card Border
+val AppCardBorderBlue = Color(0xFFBFDBFE)     // Soft Blue-200 Border
 
-val ArtisticAmberGold = Color(0xFFFBBF24)      // #FBBF24 Vibrant Amber Gold (Primary Accent)
-val ArtisticAmberGlow = Color(0xFFF59E0B)      // #F59E0B Amber 500
-val ArtisticAmberDeep = Color(0xFF92400E)      // #92400E Amber 800 (Button 3D Shadow)
-val ArtisticAmberContainer = Color(0xFF78350F) // #78350F Amber 900 (Badge Background)
-val ArtisticAmberSubtle = Color(0x33F59E0B)    // Amber-500/20 Border & Fill
+val AppPrimaryBlue = Color(0xFF2563EB)        // Vibrant Blue (Primary Button & Back Button Color)
+val AppBlueDark = Color(0xFF1D4ED8)           // Blue 700 (Deep Action Shade)
+val AppBlueLight = Color(0xFF3B82F6)          // Blue 500
+val AppBlueContainer = Color(0xFFDBEAFE)      // Blue 100 Badge Background
+val AppBlueSubtle = Color(0x262563EB)         // Blue-600/15 Accent Border
 
-val ArtisticCream = Color(0xFFFEF3C7)          // #FEF3C7 Warm Cream Text
-val ArtisticCreamSub = Color(0xFFFDE68A)       // #FDE68A Amber 200 Subtext
-val ArtisticGoldText = Color(0xFFFCD34D)       // #FCD34D Amber 300 Text
+val AppTextDark = Color(0xFF0F172A)           // Slate 900 Deep Dark Primary Text
+val AppTextSecondary = Color(0xFF475569)      // Slate 600 Muted Secondary Text
+val AppTextSubtle = Color(0xFF64748B)         // Slate 500 Subtle Captions
+val AppTextOnButton = Color(0xFFFFFFFF)       // Pure White Text On Buttons
 
-// Legacy and helper aliases mapped to Artistic Flair
-val SaffronPrimary = ArtisticAmberGold
-val SaffronDark = ArtisticAmberGlow
-val SaffronLight = ArtisticCreamSub
+// Compatibility aliases mapped to the new White & Blue theme
+val ArtisticMaroonBg = AppWhiteBg
+val ArtisticMaroonDark = AppCardBgSubtle
+val ArtisticMaroonSurface = AppWhiteBgSurface
+val ArtisticMaroonCard = AppCardBg
+val ArtisticMaroonSector = Color(0xFF1E3A8A)
 
-val MaroonRoyal = ArtisticMaroonSurface
-val MaroonDeep = ArtisticMaroonBg
-val MaroonLight = Color(0xFF5C1212)
-val MaroonSurface = ArtisticMaroonDark
+val ArtisticAmberGold = AppPrimaryBlue
+val ArtisticAmberGlow = AppBlueLight
+val ArtisticAmberDeep = AppBlueDark
+val ArtisticAmberContainer = AppBlueContainer
+val ArtisticAmberSubtle = AppBlueSubtle
 
-val GoldAccent = ArtisticAmberGold
-val GoldLight = ArtisticCream
-val GoldDark = ArtisticAmberDeep
-val GoldContainer = ArtisticAmberContainer
+val ArtisticCream = AppTextDark
+val ArtisticCreamSub = AppTextSecondary
+val ArtisticGoldText = AppPrimaryBlue
 
-val FestiveBgDark = ArtisticMaroonBg
-val FestiveCardDark = ArtisticMaroonCard
-val FestiveCardBorder = Color(0x59FBBF24)      // #FBBF24 with 35% alpha
+val SaffronPrimary = AppPrimaryBlue
+val SaffronDark = AppBlueDark
+val SaffronLight = AppBlueContainer
 
-val FestiveBgLight = Color(0xFFFFFBEB)
-val FestiveCardLight = Color(0xFFFEF3C7)
+val MaroonRoyal = AppWhiteBgSurface
+val MaroonDeep = AppWhiteBg
+val MaroonLight = AppCardBgSubtle
+val MaroonSurface = AppCardBg
 
-val TextGold = ArtisticGoldText
-val TextDark = Color(0xFF380202)
-val TextLight = ArtisticCream
+val GoldAccent = AppPrimaryBlue
+val GoldLight = AppTextDark
+val GoldDark = AppBlueDark
+val GoldContainer = AppBlueContainer
 
-val GreenSuccess = Color(0xFF22C55E)          // Vibrant Green indicator
-val OrangeAlert = Color(0xFFF97316)
-val RedTicker = Color(0xFFEF4444)
+val FestiveBgDark = AppWhiteBg
+val FestiveCardDark = AppCardBg
+val FestiveCardBorder = AppCardBorder
+
+val FestiveBgLight = AppWhiteBg
+val FestiveCardLight = AppCardBg
+
+val TextGold = AppPrimaryBlue
+val TextDark = AppTextDark
+val TextLight = AppTextDark
+
+val GreenSuccess = Color(0xFF16A34A)          // Vibrant Green indicator
+val OrangeAlert = Color(0xFFEA580C)
+val RedTicker = Color(0xFFDC2626)
+
 

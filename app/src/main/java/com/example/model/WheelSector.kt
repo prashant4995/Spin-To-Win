@@ -7,20 +7,22 @@ import com.example.ui.theme.SaffronDark
 import com.example.ui.theme.SaffronPrimary
 
 enum class SectorType {
-    WIN
+    WIN,
+    TRY_AGAIN
 }
 
 data class WheelSector(
     val id: Int,
     val type: SectorType,
-    val labelText: (Dish?) -> String,
-    val subText: String,
+    val primaryLabel: String,
+    val subLabel: (Dish?) -> String,
+    val emoji: String,
     val startAngleDeg: Float,
     val sweepAngleDeg: Float = 90f,
     val primaryColor: Color,
     val secondaryColor: Color
 ) {
-    val isWin: Boolean get() = true
+    val isWin: Boolean get() = type == SectorType.WIN
 
     companion object {
         fun createDefaultSectors(): List<WheelSector> {
@@ -28,35 +30,39 @@ data class WheelSector(
                 WheelSector(
                     id = 0,
                     type = SectorType.WIN,
-                    labelText = { dish -> "🎉 FREE ${dish?.title?.uppercase() ?: "DISH"}" },
-                    subText = "Jackpot Prize!",
+                    primaryLabel = "FREE",
+                    subLabel = { dish -> dish?.title?.uppercase() ?: "DISH" },
+                    emoji = "🎉",
                     startAngleDeg = 0f,
                     primaryColor = MaroonRoyal,
                     secondaryColor = MaroonDeep
                 ),
                 WheelSector(
                     id = 1,
-                    type = SectorType.WIN,
-                    labelText = { dish -> "🎁 LUCKY ${dish?.title?.uppercase() ?: "PRASAD"}" },
-                    subText = "Bappa's Blessing!",
+                    type = SectorType.TRY_AGAIN,
+                    primaryLabel = "BETTER",
+                    subLabel = { "LUCK NEXT TIME" },
+                    emoji = "🌟",
                     startAngleDeg = 90f,
                     primaryColor = SaffronPrimary,
                     secondaryColor = SaffronDark
                 ),
                 WheelSector(
                     id = 2,
-                    type = SectorType.WIN,
-                    labelText = { dish -> "🎉 FREE ${dish?.title?.uppercase() ?: "DISH"}" },
-                    subText = "Winner Winner!",
+                    type = SectorType.TRY_AGAIN,
+                    primaryLabel = "PRASAD",
+                    subLabel = { "WISHES" },
+                    emoji = "🪙",
                     startAngleDeg = 180f,
                     primaryColor = MaroonRoyal,
                     secondaryColor = MaroonDeep
                 ),
                 WheelSector(
                     id = 3,
-                    type = SectorType.WIN,
-                    labelText = { dish -> "⭐ FESTIVE ${dish?.title?.uppercase() ?: "TREAT"}" },
-                    subText = "Special Prasad!",
+                    type = SectorType.TRY_AGAIN,
+                    primaryLabel = "TRY",
+                    subLabel = { "AGAIN" },
+                    emoji = "✨",
                     startAngleDeg = 270f,
                     primaryColor = SaffronPrimary,
                     secondaryColor = SaffronDark

@@ -7,6 +7,9 @@ import com.example.data.local.AppDatabase
 import com.example.data.local.SpinHistoryEntity
 import com.example.model.AppScreen
 import com.example.model.Dish
+import com.example.model.SectorType
+import com.example.model.WheelSector
+import com.example.viewmodel.HistoryFilterType
 import com.example.viewmodel.WheelViewModel
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -32,30 +35,52 @@ class ExampleRobolectricTest {
 
     @Test
     fun `test initial state and dish selection flow`() {
-        val viewModel = WheelViewModel()
-        assertFalse(viewModel.uiState.value.canProceedToSpin)
+        val app = ApplicationProvider.getApplicationContext<android.app.Application>()
+        val viewModel = WheelViewModel(app)
+        assertTrue(viewModel.uiState.value.canProceedToSpin) // Default dish Khandvi selected
+
+        // Verify prices
+        assertEquals(40, Dish.MODAK.pricePerUnit)
+        assertEquals(30, Dish.KHANDVI.pricePerUnit)
+        assertEquals(55, Dish.COMBO_PLATE.pricePerUnit)
 
         // Enter Name
         viewModel.updateName("Aarav Patel")
         assertEquals("Aarav Patel", viewModel.uiState.value.userName)
-        assertFalse(viewModel.uiState.value.canProceedToSpin)
-
-        // Select Dish
-        viewModel.selectDish(Dish.KOTHIMBIR_VADI)
-        assertEquals(Dish.KOTHIMBIR_VADI, viewModel.uiState.value.selectedDish)
         assertTrue(viewModel.uiState.value.canProceedToSpin)
 
-        // Proceed to Spin
+        // Select Combo Plate
+        viewModel.selectDish(Dish.COMBO_PLATE)
+        assertEquals(Dish.COMBO_PLATE, viewModel.uiState.value.selectedDish)
+        assertTrue(viewModel.uiState.value.canProceedToSpin)
+
+        // Select Modak with quantity = 1 (Direct Checkout flow)
+        viewModel.selectDish(Dish.MODAK)
+        viewModel.setQuantity(1)
+        assertEquals(Dish.MODAK, viewModel.uiState.value.selectedDish)
+        assertTrue(viewModel.uiState.value.canProceedToSpin)
+
+        // Proceed with quantity 1 -> Direct checkout / payment
+        viewModel.proceedToSpin()
+        assertEquals(AppScreen.RewardResult, viewModel.uiState.value.currentScreen)
+        assertTrue(viewModel.uiState.value.lastResult?.isDirectCheckout == true)
+
+        // Reset to Registration and set quantity > 2 (e.g. 3) -> Lucky Spin flow
+        viewModel.navigateTo(AppScreen.Registration)
+        viewModel.setQuantity(3)
         viewModel.proceedToSpin()
         assertEquals(AppScreen.SpinWheel, viewModel.uiState.value.currentScreen)
     }
 
     @Test
     fun `test spin and reward flow`() {
-        val viewModel = WheelViewModel()
+        val app = ApplicationProvider.getApplicationContext<android.app.Application>()
+        val viewModel = WheelViewModel(app)
         viewModel.updateName("Pooja Kadam")
         viewModel.selectDish(Dish.MODAK)
+        viewModel.setQuantity(3) // Quantity > 2 unlocks lucky spin
         viewModel.proceedToSpin()
+        assertEquals(AppScreen.SpinWheel, viewModel.uiState.value.currentScreen)
 
         var calculatedTarget = 0f
         viewModel.startSpin { targetAngle ->
@@ -75,13 +100,14 @@ class ExampleRobolectricTest {
 
     @Test
     fun `test history navigation and filter toggle`() {
-        val viewModel = WheelViewModel()
+        val app = ApplicationProvider.getApplicationContext<android.app.Application>()
+        val viewModel = WheelViewModel(app)
         viewModel.navigateTo(AppScreen.SpinWheel)
         viewModel.openHistory()
         assertEquals(AppScreen.History, viewModel.uiState.value.currentScreen)
 
-        viewModel.setHistoryFilterOnlyWins(true)
-        assertTrue(viewModel.uiState.value.historyFilterOnlyWins)
+        viewModel.setHistoryFilterType(HistoryFilterType.SOLD)
+        assertEquals(HistoryFilterType.SOLD, viewModel.uiState.value.historyFilterType)
 
         viewModel.closeHistory()
         assertEquals(AppScreen.SpinWheel, viewModel.uiState.value.currentScreen)
@@ -98,21 +124,27 @@ class ExampleRobolectricTest {
         val item1 = SpinHistoryEntity(
             userName = "Aarav",
             isWin = true,
+            isFree = true,
+            isSold = false,
             dishName = Dish.MODAK.title,
             dishNativeTitle = Dish.MODAK.nativeTitle,
             dishSubtitle = Dish.MODAK.subtitle,
             dishEmoji = Dish.MODAK.emoji,
-            claimCode = "GANESH-MODAK-1234",
+            quantity = 1,
+            totalAmount = 0,
             timestamp = System.currentTimeMillis()
         )
         val item2 = SpinHistoryEntity(
             userName = "Aarav",
             isWin = false,
-            dishName = Dish.KOTHIMBIR_VADI.title,
-            dishNativeTitle = Dish.KOTHIMBIR_VADI.nativeTitle,
-            dishSubtitle = Dish.KOTHIMBIR_VADI.subtitle,
-            dishEmoji = Dish.KOTHIMBIR_VADI.emoji,
-            claimCode = "",
+            isFree = false,
+            isSold = true,
+            dishName = Dish.KHANDVI.title,
+            dishNativeTitle = Dish.KHANDVI.nativeTitle,
+            dishSubtitle = Dish.KHANDVI.subtitle,
+            dishEmoji = Dish.KHANDVI.emoji,
+            quantity = 2,
+            totalAmount = 40,
             timestamp = System.currentTimeMillis() + 1000
         )
 
@@ -122,9 +154,13 @@ class ExampleRobolectricTest {
         val all = dao.getAllHistory().first()
         assertEquals(2, all.size)
 
-        val wins = dao.getWinningsHistory().first()
+        val wins = dao.getFreeWinningsHistory().first()
         assertEquals(1, wins.size)
-        assertEquals("GANESH-MODAK-1234", wins[0].claimCode)
+        assertEquals(Dish.MODAK.title, wins[0].dishName)
+
+        val sold = dao.getSoldHistory().first()
+        assertEquals(1, sold.size)
+        assertEquals(40, sold[0].totalAmount)
 
         dao.deleteById(all[0].id)
         val remaining = dao.getAllHistory().first()
@@ -139,12 +175,12 @@ class ExampleRobolectricTest {
 
     @Test
     fun `test wheel sector configuration and win sectors`() {
-        val sectors = com.example.model.WheelSector.createDefaultSectors()
+        val sectors = WheelSector.createDefaultSectors()
         assertEquals(4, sectors.size)
-        val winSectors = sectors.filter { it.type == com.example.model.SectorType.WIN }
-        assertEquals(2, winSectors.size)
-        val retrySectors = sectors.filter { it.type == com.example.model.SectorType.TRY_AGAIN }
-        assertEquals(2, retrySectors.size)
+        val winSectors = sectors.filter { it.type == SectorType.WIN }
+        assertEquals(1, winSectors.size)
+        val tryAgainSectors = sectors.filter { it.type == SectorType.TRY_AGAIN }
+        assertEquals(3, tryAgainSectors.size)
     }
 }
 

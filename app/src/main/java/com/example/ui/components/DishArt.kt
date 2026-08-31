@@ -52,6 +52,7 @@ fun DishIllustration(
         when (dish) {
             Dish.KHANDVI -> KhandviArt(modifier = Modifier.fillMaxSize())
             Dish.MODAK -> ModakArt(modifier = Modifier.fillMaxSize())
+            Dish.COMBO_PLATE -> ComboPlateArt(modifier = Modifier.fillMaxSize())
         }
     }
 }
@@ -512,5 +513,147 @@ fun ModakArt(modifier: Modifier = Modifier) {
                 size = Size(6f, 3f)
             )
         }
+    }
+}
+
+@Composable
+fun ComboPlateArt(modifier: Modifier = Modifier) {
+    val infiniteTransition = rememberInfiniteTransition(label = "combo_glow")
+    val steamOffset by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 12f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1600, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "steam_combo"
+    )
+
+    Canvas(modifier = modifier) {
+        val w = size.width
+        val h = size.height
+        val cx = w / 2f
+        val cy = h / 2f
+
+        // Warm radial glow
+        drawCircle(
+            brush = Brush.radialGradient(
+                colors = listOf(Color(0x77FFB300), Color.Transparent),
+                center = Offset(cx, cy),
+                radius = w * 0.48f
+            ),
+            center = Offset(cx, cy),
+            radius = w * 0.48f
+        )
+
+        // Large Brass Puja Plate
+        val plateRadius = minOf(w, h) * 0.42f
+        drawCircle(
+            brush = Brush.radialGradient(
+                colors = listOf(GoldLight, GoldAccent, GoldDark),
+                center = Offset(cx - plateRadius * 0.2f, cy - plateRadius * 0.2f),
+                radius = plateRadius
+            ),
+            center = Offset(cx, cy + h * 0.03f),
+            radius = plateRadius
+        )
+
+        // Banana leaf underlay
+        drawOval(
+            brush = Brush.linearGradient(
+                colors = listOf(Color(0xFF2E7D32), Color(0xFF1B5E20)),
+                start = Offset(cx - plateRadius * 0.8f, cy),
+                end = Offset(cx + plateRadius * 0.8f, cy)
+            ),
+            topLeft = Offset(cx - plateRadius * 0.8f, cy - plateRadius * 0.7f + h * 0.03f),
+            size = Size(plateRadius * 1.6f, plateRadius * 1.45f)
+        )
+
+        // Draw 1 Steamed Modak on Left-Center
+        val modakWidth = plateRadius * 0.72f
+        val modakHeight = plateRadius * 0.82f
+        val modakCx = cx - plateRadius * 0.32f
+        val modakBottomY = cy + plateRadius * 0.38f
+        val modakTopY = modakBottomY - modakHeight
+
+        val modakPath = Path().apply {
+            moveTo(modakCx, modakTopY)
+            cubicTo(
+                modakCx + modakWidth * 0.15f, modakTopY + modakHeight * 0.28f,
+                modakCx + modakWidth * 0.56f, modakTopY + modakHeight * 0.65f,
+                modakCx + modakWidth * 0.42f, modakBottomY
+            )
+            cubicTo(
+                modakCx + modakWidth * 0.20f, modakBottomY + 10f,
+                modakCx - modakWidth * 0.20f, modakBottomY + 10f,
+                modakCx - modakWidth * 0.42f, modakBottomY
+            )
+            cubicTo(
+                modakCx - modakWidth * 0.56f, modakTopY + modakHeight * 0.65f,
+                modakCx - modakWidth * 0.15f, modakTopY + modakHeight * 0.28f,
+                modakCx, modakTopY
+            )
+            close()
+        }
+
+        drawPath(
+            path = modakPath,
+            brush = Brush.linearGradient(
+                colors = listOf(
+                    Color(0xFFFFFFFF),
+                    Color(0xFFFFFDE7),
+                    Color(0xFFF0EBE1),
+                    Color(0xFFDED4C5)
+                ),
+                start = Offset(modakCx - modakWidth * 0.3f, modakTopY),
+                end = Offset(modakCx + modakWidth * 0.4f, modakBottomY)
+            )
+        )
+
+        // Modak saffron strand
+        val kesarPath = Path().apply {
+            moveTo(modakCx, modakTopY - 2f)
+            cubicTo(
+                modakCx - 6f, modakTopY + 10f,
+                modakCx + 3f, modakTopY + 18f,
+                modakCx - 1f, modakTopY + 28f
+            )
+        }
+        drawPath(kesarPath, Color(0xFFFF6D00), style = Stroke(width = 2.5f, cap = StrokeCap.Round))
+
+        // Draw 2 Khandvi Rolls on Right
+        val rollW = plateRadius * 0.55f
+        val rollH = plateRadius * 0.24f
+
+        // Top roll
+        drawKhandviRoll(
+            centerX = cx + plateRadius * 0.35f,
+            centerY = cy - plateRadius * 0.10f + h * 0.03f,
+            width = rollW,
+            height = rollH,
+            rotationDeg = 10f
+        )
+
+        // Bottom roll
+        drawKhandviRoll(
+            centerX = cx + plateRadius * 0.32f,
+            centerY = cy + plateRadius * 0.22f + h * 0.03f,
+            width = rollW * 1.05f,
+            height = rollH * 1.05f,
+            rotationDeg = -5f,
+            isHero = true
+        )
+
+        // Delicate Steam line
+        val steamColor = Color(0x55FFF8E1)
+        val steamPath = Path().apply {
+            moveTo(cx - 10f, cy - plateRadius * 0.45f - steamOffset)
+            cubicTo(
+                cx - 20f, cy - plateRadius * 0.65f - steamOffset,
+                cx + 5f, cy - plateRadius * 0.85f - steamOffset,
+                cx - 10f, cy - plateRadius * 1.05f - steamOffset
+            )
+        }
+        drawPath(steamPath, steamColor, style = Stroke(width = 2.5f, cap = StrokeCap.Round))
     }
 }

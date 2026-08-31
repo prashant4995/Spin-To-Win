@@ -397,22 +397,28 @@ fun LuckyWheel(
                     val isTargetLanded = (phase == WheelSpinPhase.FINAL_LANDING || phase == WheelSpinPhase.LANDED) &&
                             index == landedSectorIndex
 
+                    val titleTextSize = (wheelRadius * 0.10f).coerceIn(24f, 40f)
+                    val titleColor = if (isWin || isTargetLanded) GoldLight.toArgb() else Color.White.toArgb()
+
                     val titlePaint = Paint().apply {
-                        color = if (isWin || isTargetLanded) GoldLight.toArgb() else Color.White.toArgb()
-                        textSize = (wheelRadius * 0.10f).coerceIn(24f, 40f)
+                        color = titleColor
+                        textSize = titleTextSize
                         typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
                         textAlign = Paint.Align.CENTER
                         isAntiAlias = true
-                        setShadowLayer(8f, 2f, 3f, Color(0xEE000000).toArgb())
                     }
 
-                    val dishTitle = selectedDish?.title?.uppercase() ?: "DELICACY"
-                    val (primaryLabel, subLabel, emoji) = when (index % 4) {
-                        0 -> Triple("FREE", dishTitle, "🎉")
-                        1 -> Triple("LUCKY", "PRASAD", "🎁")
-                        2 -> Triple("FREE", dishTitle, "⭐")
-                        else -> Triple("BAPPA'S", "BLESSING", "🪔")
+                    val shadowPaint = Paint().apply {
+                        color = Color(0xDD000000).toArgb()
+                        textSize = titleTextSize
+                        typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+                        textAlign = Paint.Align.CENTER
+                        isAntiAlias = true
                     }
+
+                    val primaryLabel = sector.primaryLabel
+                    val subLabel = sector.subLabel(selectedDish)
+                    val emoji = sector.emoji
 
                     val emojiPaint = Paint().apply {
                         textSize = (wheelRadius * 0.12f).coerceIn(28f, 46f)
@@ -430,30 +436,33 @@ fun LuckyWheel(
                         emojiPaint
                     )
 
-                    // Draw Primary Text
-                    nativeCanvas.drawText(
-                        primaryLabel,
-                        textRadius - wheelRadius * 0.02f,
-                        cy - 12f,
-                        titlePaint
-                    )
+                    // Draw Primary Text with Clean Drop Shadow
+                    val textX = textRadius - wheelRadius * 0.02f
+                    val textY = cy - 12f
 
-                    // Draw Dish Name or Subtitle
+                    nativeCanvas.drawText(primaryLabel, textX + 2f, textY + 2f, shadowPaint)
+                    nativeCanvas.drawText(primaryLabel, textX, textY, titlePaint)
+
+                    // Draw Dish Name or Subtitle with Drop Shadow
+                    val subTextSize = (wheelRadius * 0.082f).coerceIn(18f, 30f)
                     val subTitlePaint = Paint().apply {
                         color = Color(0xFFFFF9C4).toArgb()
-                        textSize = (wheelRadius * 0.082f).coerceIn(18f, 30f)
+                        textSize = subTextSize
                         typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
                         textAlign = Paint.Align.CENTER
                         isAntiAlias = true
-                        setShadowLayer(6f, 1.5f, 2f, Color(0xDD000000).toArgb())
+                    }
+                    val subShadowPaint = Paint().apply {
+                        color = Color(0xCC000000).toArgb()
+                        textSize = subTextSize
+                        typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+                        textAlign = Paint.Align.CENTER
+                        isAntiAlias = true
                     }
 
-                    nativeCanvas.drawText(
-                        subLabel,
-                        textRadius - wheelRadius * 0.02f,
-                        cy + subTitlePaint.textSize + 2f,
-                        subTitlePaint
-                    )
+                    val subY = cy + subTextSize + 2f
+                    nativeCanvas.drawText(subLabel, textX + 1.5f, subY + 1.5f, subShadowPaint)
+                    nativeCanvas.drawText(subLabel, textX, subY, subTitlePaint)
 
                     nativeCanvas.restore()
                 }

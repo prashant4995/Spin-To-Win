@@ -58,6 +58,7 @@ import com.example.ui.components.DishIllustration
 import com.example.ui.components.DiyaLamp
 import com.example.ui.components.MarigoldGarland
 import com.example.ui.components.PaymentQrCodeCard
+import com.example.ui.theme.AppTheme
 import com.example.ui.theme.ArtisticAmberContainer
 import com.example.ui.theme.ArtisticAmberGlow
 import com.example.ui.theme.ArtisticAmberGold
@@ -82,16 +83,22 @@ fun RewardResultScreen(
     onSpinAgain: () -> Unit = {},
     onRestart: () -> Unit = {},
     onOpenHistory: () -> Unit = {},
+    onOpenSettings: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val soundManager = LocalFestiveSoundManager.current
+    val customColors = AppTheme.customColors
     val userName = result?.userName ?: "Valued Guest"
     val wonDish = result?.wonDish ?: selectedDish ?: Dish.MODAK
     val finalQuantity = result?.quantity ?: quantity
 
     LaunchedEffect(result) {
         if (result != null) {
-            soundManager?.playWinChime()
+            if (result.isWin) {
+                soundManager?.playWinChime()
+            } else {
+                soundManager?.playClickSound()
+            }
         }
     }
 
@@ -101,9 +108,9 @@ fun RewardResultScreen(
             .background(
                 Brush.verticalGradient(
                     colors = listOf(
-                        ArtisticMaroonBg,
-                        ArtisticMaroonDark,
-                        Color(0xFF1B0101)
+                        customColors.bg,
+                        customColors.bgSurface,
+                        customColors.cardBgSubtle
                     )
                 )
             )
@@ -121,20 +128,37 @@ fun RewardResultScreen(
                     .padding(horizontal = 16.dp, vertical = 8.dp),
                 contentAlignment = Alignment.Center
             ) {
-                WinContent(
-                    userName = userName,
-                    dish = wonDish,
-                    quantity = finalQuantity,
-                    isPaidViaQr = isPaidViaQr || result?.isPaidViaQr == true,
-                    onMarkPaidViaQr = onMarkPaidViaQr,
-                    onClaimAndReset = onClaimAndReset,
-                    onOpenHistory = onOpenHistory
-                )
+                if (result?.isWin == true) {
+                    WinContent(
+                        userName = userName,
+                        dish = wonDish,
+                        quantity = finalQuantity,
+                        isPaidViaQr = isPaidViaQr || result?.isPaidViaQr == true,
+                        onMarkPaidViaQr = onMarkPaidViaQr,
+                        onClaimAndReset = onClaimAndReset,
+                        onOpenHistory = onOpenHistory
+                    )
+                } else {
+                    TryAgainContent(
+                        userName = userName,
+                        dish = wonDish,
+                        quantity = finalQuantity,
+                        isPaidViaQr = isPaidViaQr || result?.isPaidViaQr == true,
+                        isDirectCheckout = result?.isDirectCheckout == true,
+                        onMarkPaidViaQr = onMarkPaidViaQr,
+                        onSpinAgain = onSpinAgain,
+                        onClaimAndReset = onClaimAndReset,
+                        onRestart = onRestart,
+                        onOpenHistory = onOpenHistory
+                    )
+                }
             }
         }
 
-        // Win celebration confetti shower
-        ConfettiOverlay(trigger = result)
+        // Win celebration confetti shower (only on win)
+        if (result?.isWin == true) {
+            ConfettiOverlay(trigger = result)
+        }
     }
 }
 
@@ -150,6 +174,7 @@ private fun WinContent(
 ) {
     val scrollState = rememberScrollState()
     val soundManager = LocalFestiveSoundManager.current
+    val customColors = AppTheme.customColors
 
     // In a win, 1 item is free. Any extra quantity (> 1) is payable.
     val extraItems = (quantity - 1).coerceAtLeast(0)
@@ -166,9 +191,9 @@ private fun WinContent(
                 .testTag("win_result_card"),
             shape = RoundedCornerShape(26.dp),
             colors = CardDefaults.cardColors(
-                containerColor = ArtisticMaroonCard.copy(alpha = 0.98f)
+                containerColor = customColors.cardBg
             ),
-            border = BorderStroke(2.dp, ArtisticAmberGold)
+            border = BorderStroke(2.dp, customColors.primaryAccent)
         ) {
             Column(
                 modifier = Modifier
@@ -188,14 +213,14 @@ private fun WinContent(
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(
                             text = "🏆 FESTIVE WINNER! 🏆",
-                            color = ArtisticAmberGlow,
+                            color = customColors.primaryAccent,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 2.sp
                         )
                         Text(
                             text = "Congratulations!",
-                            color = ArtisticAmberGold,
+                            color = customColors.primaryAccent,
                             fontFamily = FontFamily.Serif,
                             fontStyle = FontStyle.Italic,
                             fontSize = 22.sp,
@@ -222,8 +247,8 @@ private fun WinContent(
                 // Dish Title & Win Banner
                 Surface(
                     shape = RoundedCornerShape(14.dp),
-                    color = ArtisticMaroonSurface,
-                    border = BorderStroke(1.2.dp, ArtisticAmberGold),
+                    color = customColors.surfaceDark,
+                    border = BorderStroke(1.2.dp, customColors.primaryAccent),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Column(
@@ -232,14 +257,14 @@ private fun WinContent(
                     ) {
                         Text(
                             text = "1x FREE ${dish.title.uppercase()} (WORTH ₹${dish.pricePerUnit})",
-                            color = ArtisticAmberGold,
+                            color = customColors.primaryAccent,
                             fontWeight = FontWeight.Black,
                             fontSize = 15.sp,
                             letterSpacing = 1.sp
                         )
                         Text(
                             text = "${dish.nativeTitle} • Authentic Festival Special Prasad",
-                            color = ArtisticCream,
+                            color = customColors.textSecondary,
                             fontSize = 11.5.sp
                         )
                     }
@@ -248,14 +273,14 @@ private fun WinContent(
                 // Guest Greeting Box
                 Surface(
                     shape = RoundedCornerShape(14.dp),
-                    color = ArtisticMaroonDark,
-                    border = BorderStroke(0.8.dp, ArtisticAmberSubtle),
+                    color = customColors.surfaceDark,
+                    border = BorderStroke(1.dp, customColors.cardBorder),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Column(modifier = Modifier.padding(12.dp)) {
                         Text(
                             text = "Namaste, $userName!",
-                            color = ArtisticAmberGold,
+                            color = customColors.primaryAccent,
                             fontWeight = FontWeight.Bold,
                             fontSize = 15.sp
                         )
@@ -266,7 +291,7 @@ private fun WinContent(
                             } else {
                                 "You ordered $quantity items: 1 is 100% FREE as your prize, and remaining $extraItems items are ₹$payableAmount total."
                             },
-                            color = ArtisticCreamSub,
+                            color = customColors.textSecondary,
                             fontSize = 12.sp,
                             lineHeight = 16.sp
                         )
@@ -304,8 +329,8 @@ private fun WinContent(
                             .testTag("done_button"),
                         shape = RoundedCornerShape(16.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = ArtisticAmberGold,
-                            contentColor = ArtisticMaroonBg
+                            containerColor = customColors.primaryAccent,
+                            contentColor = customColors.textOnAccent
                         ),
                         elevation = ButtonDefaults.buttonElevation(
                             defaultElevation = 8.dp,
@@ -319,12 +344,13 @@ private fun WinContent(
                             Icon(
                                 imageVector = Icons.Default.CheckCircle,
                                 contentDescription = "Done",
-                                tint = ArtisticMaroonBg,
+                                tint = customColors.textOnAccent,
                                 modifier = Modifier.size(22.dp)
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
                                 text = "DONE",
+                                color = customColors.textOnAccent,
                                 fontSize = 16.sp,
                                 fontWeight = FontWeight.Black,
                                 letterSpacing = 2.sp
@@ -342,10 +368,10 @@ private fun WinContent(
                             .height(46.dp)
                             .testTag("view_history_from_win_button"),
                         shape = RoundedCornerShape(14.dp),
-                        border = BorderStroke(1.2.dp, ArtisticAmberGold),
+                        border = BorderStroke(1.2.dp, customColors.primaryAccent),
                         colors = ButtonDefaults.outlinedButtonColors(
-                            contentColor = ArtisticAmberGold,
-                            containerColor = ArtisticMaroonDark
+                            contentColor = customColors.primaryAccent,
+                            containerColor = customColors.surfaceDark
                         )
                     ) {
                         Row(
@@ -355,7 +381,7 @@ private fun WinContent(
                             Icon(
                                 imageVector = Icons.Default.History,
                                 contentDescription = "View Winnings & History",
-                                tint = ArtisticAmberGold,
+                                tint = customColors.primaryAccent,
                                 modifier = Modifier.size(18.dp)
                             )
                             Spacer(modifier = Modifier.width(6.dp))
@@ -363,7 +389,7 @@ private fun WinContent(
                                 text = "View Orders, Sales & History",
                                 fontSize = 13.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = ArtisticAmberGold
+                                color = customColors.primaryAccent
                             )
                         }
                     }
@@ -379,6 +405,7 @@ private fun TryAgainContent(
     dish: Dish,
     quantity: Int,
     isPaidViaQr: Boolean,
+    isDirectCheckout: Boolean = false,
     onMarkPaidViaQr: (Int) -> Unit,
     onSpinAgain: () -> Unit,
     onClaimAndReset: () -> Unit,
@@ -387,6 +414,7 @@ private fun TryAgainContent(
 ) {
     val scrollState = rememberScrollState()
     val soundManager = LocalFestiveSoundManager.current
+    val customColors = AppTheme.customColors
     val totalAmount = quantity * dish.pricePerUnit
 
     Card(
@@ -396,9 +424,9 @@ private fun TryAgainContent(
             .testTag("try_again_card"),
         shape = RoundedCornerShape(26.dp),
         colors = CardDefaults.cardColors(
-            containerColor = ArtisticMaroonCard.copy(alpha = 0.98f)
+            containerColor = customColors.cardBg
         ),
-        border = BorderStroke(1.5.dp, FestiveCardBorder)
+        border = BorderStroke(1.5.dp, customColors.cardBorder)
     ) {
         Column(
             modifier = Modifier
@@ -416,8 +444,8 @@ private fun TryAgainContent(
             ) {
                 DiyaLamp(modifier = Modifier.size(34.dp))
                 Text(
-                    text = "BETTER LUCK NEXT TIME",
-                    color = ArtisticAmberGlow,
+                    text = if (isDirectCheckout) "ORDER CHECKOUT & PAYMENT" else "BETTER LUCK NEXT TIME",
+                    color = customColors.primaryAccent,
                     fontSize = 10.5.sp,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 2.sp
@@ -430,29 +458,33 @@ private fun TryAgainContent(
                 modifier = Modifier
                     .size(60.dp)
                     .clip(CircleShape)
-                    .background(ArtisticMaroonDark),
+                    .background(customColors.surfaceDark),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    imageVector = Icons.Default.SentimentDissatisfied,
-                    contentDescription = "Try again icon",
-                    tint = ArtisticAmberGold,
+                    imageVector = if (isDirectCheckout) Icons.Default.ShoppingBag else Icons.Default.SentimentDissatisfied,
+                    contentDescription = if (isDirectCheckout) "Checkout icon" else "Try again icon",
+                    tint = customColors.primaryAccent,
                     modifier = Modifier.size(34.dp)
                 )
             }
 
             Text(
-                text = "Almost Had It, $userName!",
-                color = ArtisticCream,
+                text = if (isDirectCheckout) "Order Summary for $userName" else "Almost Had It, $userName!",
+                color = customColors.textPrimary,
                 fontSize = 19.sp,
                 fontWeight = FontWeight.ExtraBold,
                 textAlign = TextAlign.Center
             )
 
             Text(
-                text = "You can spin again or complete payment below via QR to enjoy fresh $quantity plates of ${dish.title} (₹$totalAmount).",
-                color = ArtisticCreamSub,
-                fontSize = 12.sp,
+                text = if (isDirectCheckout) {
+                    "Scan QR code below to complete payment for $quantity portion${if (quantity > 1) "s" else ""} of ${dish.title} (₹$totalAmount)."
+                } else {
+                    "Complete payment below via QR to enjoy fresh $quantity portions of ${dish.title} (₹$totalAmount)."
+                },
+                color = customColors.textSecondary,
+                fontSize = 12.5.sp,
                 lineHeight = 16.sp,
                 textAlign = TextAlign.Center
             )
@@ -470,7 +502,7 @@ private fun TryAgainContent(
                 }
             )
 
-            // CTA Buttons: Done / Spin Again & Start Over & View History
+            // CTA Buttons: Done / Complete Order & View History & Start Over
             Column(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
@@ -487,8 +519,8 @@ private fun TryAgainContent(
                         .testTag("done_try_again_button"),
                     shape = RoundedCornerShape(16.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = ArtisticAmberGold,
-                        contentColor = ArtisticMaroonBg
+                        containerColor = customColors.primaryAccent,
+                        contentColor = customColors.textOnAccent
                     ),
                     elevation = ButtonDefaults.buttonElevation(
                         defaultElevation = 8.dp,
@@ -502,48 +534,16 @@ private fun TryAgainContent(
                         Icon(
                             imageVector = Icons.Default.CheckCircle,
                             contentDescription = "Done",
-                            tint = ArtisticMaroonBg,
+                            tint = customColors.textOnAccent,
                             modifier = Modifier.size(22.dp)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
                             text = "DONE",
+                            color = customColors.textOnAccent,
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Black,
                             letterSpacing = 2.sp
-                        )
-                    }
-                }
-
-                OutlinedButton(
-                    onClick = onSpinAgain,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(48.dp)
-                        .testTag("spin_again_button"),
-                    shape = RoundedCornerShape(14.dp),
-                    border = BorderStroke(1.2.dp, ArtisticAmberGold),
-                    colors = ButtonDefaults.outlinedButtonColors(
-                        contentColor = ArtisticAmberGold,
-                        containerColor = ArtisticMaroonDark
-                    )
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Replay,
-                            contentDescription = "Spin Again",
-                            tint = ArtisticAmberGold,
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "SPIN 3D WHEEL AGAIN",
-                            fontSize = 13.5.sp,
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = 1.sp
                         )
                     }
                 }
@@ -558,10 +558,10 @@ private fun TryAgainContent(
                         .height(44.dp)
                         .testTag("view_history_from_reward_button"),
                     shape = RoundedCornerShape(14.dp),
-                    border = BorderStroke(1.2.dp, ArtisticAmberGold),
+                    border = BorderStroke(1.2.dp, customColors.primaryAccent),
                     colors = ButtonDefaults.outlinedButtonColors(
-                        contentColor = ArtisticAmberGold,
-                        containerColor = ArtisticMaroonDark
+                        contentColor = customColors.primaryAccent,
+                        containerColor = customColors.surfaceDark
                     )
                 ) {
                     Row(
@@ -571,7 +571,7 @@ private fun TryAgainContent(
                         Icon(
                             imageVector = Icons.Default.History,
                             contentDescription = "View Winnings & History",
-                            tint = ArtisticAmberGold,
+                            tint = customColors.primaryAccent,
                             modifier = Modifier.size(18.dp)
                         )
                         Spacer(modifier = Modifier.width(6.dp))
@@ -579,7 +579,7 @@ private fun TryAgainContent(
                             text = "View Orders, Sales & History",
                             fontSize = 12.5.sp,
                             fontWeight = FontWeight.Bold,
-                            color = ArtisticAmberGold
+                            color = customColors.primaryAccent
                         )
                     }
                 }
@@ -591,9 +591,10 @@ private fun TryAgainContent(
                         .height(44.dp)
                         .testTag("start_over_button"),
                     shape = RoundedCornerShape(14.dp),
-                    border = BorderStroke(1.dp, ArtisticAmberSubtle),
+                    border = BorderStroke(1.dp, customColors.cardBorder),
                     colors = ButtonDefaults.outlinedButtonColors(
-                        contentColor = ArtisticAmberGold
+                        contentColor = customColors.primaryAccent,
+                        containerColor = customColors.cardBg
                     )
                 ) {
                     Row(
@@ -603,12 +604,13 @@ private fun TryAgainContent(
                         Icon(
                             imageVector = Icons.Default.Restaurant,
                             contentDescription = "Change Dish",
-                            tint = ArtisticAmberGold,
+                            tint = customColors.primaryAccent,
                             modifier = Modifier.size(16.dp)
                         )
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
-                            text = "Change Dish / New Customer",
+                            text = "New Customer / Select Delicacy",
+                            color = customColors.textPrimary,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.SemiBold
                         )

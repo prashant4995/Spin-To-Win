@@ -10,25 +10,35 @@ enum class Dish(
     val emoji: String,
     val pricePerUnit: Int // Price in Indian Rupees (₹)
 ) {
-    KHANDVI(
-        title = "Khandvi",
-        nativeTitle = "खांडवी",
-        subtitle = "Silky Melt-in-Mouth Spiced Gram Flour Rolls",
-        tag = "Savory & Steamed",
-        description = "Authentic delicate rolled bites handcrafted from spiced gram flour and fresh sour buttermilk, seasoned with mustard seeds, golden sesame, fresh coconut, and fresh coriander.",
-        highlights = listOf("Silky Steamed Rolls", "Fresh Grated Coconut", "Mustard & Sesame Tadka", "Spiced Buttermilk"),
-        emoji = "🟡",
-        pricePerUnit = 30
-    ),
     MODAK(
         title = "Modak",
         nativeTitle = "उकडीचे मोदक",
-        subtitle = "Sweet Steamed / Fried Delicacy",
-        tag = "Sweet & Festive",
-        description = "Divine festival dumplings handcrafted from tender rice dough, packed with luscious grated fresh coconut, pure organic jaggery, fragrant cardamom, and royal saffron.",
-        highlights = listOf("Fresh Coconut & Jaggery", "Royal Kesar Saffron", "Aromatic Elaichi", "Topped with Pure Ghee"),
+        subtitle = "Sweet Festive Delicacy",
+        tag = "Sweet",
+        description = "Authentic steamed sweet dumpling stuffed with fresh coconut & organic jaggery.",
+        highlights = listOf("Steamed Modak", "Pure Ghee", "Fresh Coconut"),
         emoji = "✨",
+        pricePerUnit = 40
+    ),
+    KHANDVI(
+        title = "Khandvi",
+        nativeTitle = "खांडवी",
+        subtitle = "Spiced Gram Flour Rolls",
+        tag = "Savory",
+        description = "Melt-in-mouth spiced gram flour rolls tempered with mustard seeds & grated coconut.",
+        highlights = listOf("Khandvi Rolls", "Steamed Tadka", "Sesame & Coconut"),
+        emoji = "🟡",
         pricePerUnit = 30
+    ),
+    COMBO_PLATE(
+        title = "Festive Combo",
+        nativeTitle = "उत्सव कॉम्बो थाळी",
+        subtitle = "Modak + Khandvi Plate",
+        tag = "Festive Combo",
+        description = "Festive special platter pairing authentic sweet Modak with savory spiced Khandvi.",
+        highlights = listOf("Festive Combo", "Modak + Khandvi", "Best Value"),
+        emoji = "🍱",
+        pricePerUnit = 55
     )
 }
 
@@ -47,6 +57,7 @@ data class SpinResult(
     val isSold: Boolean = false,
     val amountPaid: Int = 0,
     val isPaidViaQr: Boolean = false,
+    val isDirectCheckout: Boolean = false,
     val timestamp: Long = System.currentTimeMillis()
 )
 

@@ -29,11 +29,17 @@ class GreetingScreenshotTest {
                 FoodSelectionScreen(
                     userName = "Ananya",
                     nameError = null,
-                    selectedDish = Dish.KOTHIMBIR_VADI,
+                    selectedDish = Dish.KHANDVI,
+                    quantity = 1,
                     canProceed = true,
                     onNameChanged = {},
                     onDishSelected = {},
-                    onProceedClicked = {}
+                    onQuantityChanged = {},
+                    onIncrementQuantity = {},
+                    onDecrementQuantity = {},
+                    onProceedClicked = {},
+                    onOpenHistory = {},
+                    onOpenSettings = {}
                 )
             }
         }

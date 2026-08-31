@@ -35,6 +35,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.ShoppingBag
@@ -79,6 +80,7 @@ import com.example.audio.LocalFestiveSoundManager
 import com.example.data.local.SpinHistoryEntity
 import com.example.ui.components.DiyaLamp
 import com.example.ui.components.MarigoldGarland
+import com.example.ui.theme.AppTheme
 import com.example.ui.theme.ArtisticAmberContainer
 import com.example.ui.theme.ArtisticAmberGlow
 import com.example.ui.theme.ArtisticAmberGold
@@ -117,11 +119,13 @@ fun SpinHistoryScreen(
     onClearAllHistory: () -> Unit,
     onNavigateBack: () -> Unit,
     onStartSpin: () -> Unit,
+    onOpenSettings: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
     val soundManager = LocalFestiveSoundManager.current
     val isMuted by (soundManager?.isMuted ?: kotlinx.coroutines.flow.MutableStateFlow(false)).collectAsStateWithLifecycle(false)
+    val customColors = AppTheme.customColors
 
     var showClearDialog by remember { mutableStateOf(false) }
 
@@ -139,9 +143,9 @@ fun SpinHistoryScreen(
             .background(
                 Brush.verticalGradient(
                     colors = listOf(
-                        ArtisticMaroonDark,
-                        ArtisticMaroonBg,
-                        ArtisticMaroonSurface
+                        customColors.bg,
+                        customColors.bgSurface,
+                        customColors.cardBgSubtle
                     )
                 )
             )
@@ -174,13 +178,13 @@ fun SpinHistoryScreen(
                     modifier = Modifier
                         .size(40.dp)
                         .clip(CircleShape)
-                        .background(ArtisticMaroonCard)
+                        .background(customColors.primaryAccent)
                         .testTag("history_back_button")
                 ) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                         contentDescription = "Back",
-                        tint = ArtisticAmberGold,
+                        tint = customColors.textOnAccent,
                         modifier = Modifier.size(22.dp)
                     )
                 }
@@ -188,20 +192,42 @@ fun SpinHistoryScreen(
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
                         text = "Sales & Free Treats History",
-                        color = ArtisticAmberGold,
+                        color = customColors.primaryAccent,
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold,
                         fontFamily = FontFamily.Serif
                     )
                     Text(
                         text = "विक्री आणि मोफत प्रसाद इतिहास",
-                        color = ArtisticCreamSub,
+                        color = customColors.textSecondary,
                         fontSize = 11.sp,
                         letterSpacing = 0.5.sp
                     )
                 }
 
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(
+                        onClick = {
+                            soundManager?.playClickSound()
+                            onOpenSettings()
+                        },
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(CircleShape)
+                            .background(customColors.cardBg)
+                            .testTag("theme_settings_history_button")
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Palette,
+                            contentDescription = "Theme & Colors",
+                            tint = customColors.primaryAccent,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+
                     if (historyList.isNotEmpty()) {
                         IconButton(
                             onClick = {
@@ -211,7 +237,7 @@ fun SpinHistoryScreen(
                             modifier = Modifier
                                 .size(40.dp)
                                 .clip(CircleShape)
-                                .background(ArtisticMaroonCard)
+                                .background(customColors.cardBg)
                                 .testTag("clear_history_button")
                         ) {
                             Icon(
@@ -221,7 +247,6 @@ fun SpinHistoryScreen(
                                 modifier = Modifier.size(22.dp)
                             )
                         }
-                        Spacer(modifier = Modifier.width(6.dp))
                     }
 
                     IconButton(
@@ -229,13 +254,13 @@ fun SpinHistoryScreen(
                         modifier = Modifier
                             .size(40.dp)
                             .clip(CircleShape)
-                            .background(ArtisticMaroonCard)
+                            .background(customColors.cardBg)
                             .testTag("sound_toggle_history_button")
                     ) {
                         Icon(
                             imageVector = if (isMuted) Icons.Default.VolumeOff else Icons.Default.VolumeUp,
                             contentDescription = if (isMuted) "Unmute" else "Mute",
-                            tint = if (isMuted) ArtisticCreamSub else ArtisticAmberGold,
+                            tint = if (isMuted) customColors.textSecondary else customColors.primaryAccent,
                             modifier = Modifier.size(20.dp)
                         )
                     }
@@ -772,6 +797,8 @@ private fun EmptyHistoryView(
     onStartSpin: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val customColors = AppTheme.customColors
+
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -789,7 +816,7 @@ private fun EmptyHistoryView(
                 HistoryFilterType.SOLD -> "No Sold Items Yet"
                 HistoryFilterType.FREE -> "No Free Prasad Won Yet"
             },
-            color = ArtisticAmberGold,
+            color = customColors.primaryAccent,
             fontSize = 18.sp,
             fontWeight = FontWeight.Bold,
             fontFamily = FontFamily.Serif
@@ -799,7 +826,7 @@ private fun EmptyHistoryView(
 
         Text(
             text = "Customer orders, QR payments, and winning free delicacies will appear here in real-time.",
-            color = ArtisticCreamSub,
+            color = customColors.textSecondary,
             fontSize = 12.5.sp,
             textAlign = TextAlign.Center,
             lineHeight = 17.sp
@@ -810,8 +837,8 @@ private fun EmptyHistoryView(
         Button(
             onClick = onStartSpin,
             colors = ButtonDefaults.buttonColors(
-                containerColor = ArtisticAmberGold,
-                contentColor = ArtisticMaroonDark
+                containerColor = customColors.primaryAccent,
+                contentColor = customColors.textOnAccent
             ),
             shape = RoundedCornerShape(14.dp),
             contentPadding = PaddingValues(horizontal = 20.dp, vertical = 10.dp),
@@ -820,11 +847,13 @@ private fun EmptyHistoryView(
             Icon(
                 imageVector = Icons.Default.Casino,
                 contentDescription = null,
+                tint = customColors.textOnAccent,
                 modifier = Modifier.size(18.dp)
             )
             Spacer(modifier = Modifier.width(8.dp))
             Text(
                 text = "Take Next Customer / Spin",
+                color = customColors.textOnAccent,
                 fontWeight = FontWeight.Bold,
                 fontSize = 13.sp
             )

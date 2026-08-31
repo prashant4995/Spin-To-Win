@@ -30,6 +30,7 @@ import androidx.compose.material.icons.filled.Casino
 import androidx.compose.material.icons.filled.Celebration
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Redo
 import androidx.compose.material.icons.filled.Refresh
@@ -74,6 +75,7 @@ import com.example.ui.components.DishIllustration
 import com.example.ui.components.LuckyWheel
 import com.example.ui.components.MarigoldGarland
 import com.example.ui.components.ParticleConfetti
+import com.example.ui.theme.AppTheme
 import com.example.ui.theme.ArtisticAmberContainer
 import com.example.ui.theme.ArtisticAmberGlow
 import com.example.ui.theme.ArtisticAmberGold
@@ -102,6 +104,7 @@ fun SpinWheelScreen(
     onStartSpin: (onTargetCalculated: (Float) -> Unit) -> Unit,
     onSpinAnimationFinished: (Float) -> Unit,
     onOpenHistory: () -> Unit = {},
+    onOpenSettings: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val coroutineScope = rememberCoroutineScope()
@@ -185,15 +188,6 @@ fun SpinWheelScreen(
                             landingPulseAlpha = landingPulseAlpha
                         )
 
-                        // Dynamic ratchet tick audio playback during peg crossings
-                        val now = System.currentTimeMillis()
-                        if (isPegCrossing && (now - lastTickTime > 35L)) {
-                            lastTickTime = now
-                            val pitch = 0.85f + (velocity / 1600f) * 0.65f
-                            val vol = 0.3f + (velocity / 1600f) * 0.35f
-                            soundManager?.playRatchetTick(pitch, vol)
-                        }
-
                         if (rawProgress >= 1f) {
                             break
                         }
@@ -218,11 +212,16 @@ fun SpinWheelScreen(
                         landingPulseAlpha = 1f
                     )
 
-                    confettiTriggerKey = System.currentTimeMillis()
-                    isWinCelebrationVisible = true
-                    soundManager?.playWinChime()
-                    soundManager?.announceWinner(userName, selectedDish?.title ?: "Prasad")
-                    delay(3000)
+                    if (isWin) {
+                        confettiTriggerKey = System.currentTimeMillis()
+                        isWinCelebrationVisible = true
+                        soundManager?.playWinChime()
+                        soundManager?.announceWinner(userName, selectedDish?.title ?: "Prasad")
+                        delay(2800)
+                    } else {
+                        soundManager?.playClickSound()
+                        delay(1600)
+                    }
 
                     onSpinAnimationFinished(targetAngle)
                 }
@@ -230,15 +229,17 @@ fun SpinWheelScreen(
         }
     }
 
+    val customColors = AppTheme.customColors
+
     Box(
         modifier = modifier
             .fillMaxSize()
             .background(
                 Brush.verticalGradient(
                     colors = listOf(
-                        ArtisticMaroonBg,
-                        ArtisticMaroonDark,
-                        Color(0xFF1B0101)
+                        customColors.bg,
+                        customColors.bgSurface,
+                        customColors.cardBgSubtle
                     )
                 )
             )
@@ -257,8 +258,8 @@ fun SpinWheelScreen(
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 6.dp),
                 shape = RoundedCornerShape(18.dp),
-                color = ArtisticMaroonCard,
-                border = BorderStroke(1.dp, FestiveCardBorder)
+                color = customColors.cardBg,
+                border = BorderStroke(1.dp, customColors.cardBorder)
             ) {
                 Row(
                     modifier = Modifier
@@ -277,13 +278,13 @@ fun SpinWheelScreen(
                             modifier = Modifier
                                 .size(38.dp)
                                 .clip(CircleShape)
-                                .background(ArtisticMaroonDark)
+                                .background(customColors.primaryAccent)
                                 .testTag("back_button")
                         ) {
                             Icon(
                                 imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                                 contentDescription = "Back to food selection",
-                                tint = ArtisticAmberGold
+                                tint = customColors.textOnAccent
                             )
                         }
 
@@ -292,7 +293,7 @@ fun SpinWheelScreen(
                         Column {
                             Text(
                                 text = "Namaste, $userName! 🎊",
-                                color = ArtisticAmberGold,
+                                color = customColors.primaryAccent,
                                 fontFamily = FontFamily.Serif,
                                 fontStyle = FontStyle.Italic,
                                 fontWeight = FontWeight.Bold,
@@ -300,7 +301,7 @@ fun SpinWheelScreen(
                             )
                             Text(
                                 text = "Spin to win free ${selectedDish?.title ?: "delicacy"}!",
-                                color = ArtisticCreamSub,
+                                color = customColors.textSecondary,
                                 fontSize = 11.5.sp
                             )
                         }
@@ -308,9 +309,29 @@ fun SpinWheelScreen(
 
                     // Stat Badges, History & Sound Toggle
                     Row(
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
+                        IconButton(
+                            onClick = {
+                                soundManager?.playClickSound()
+                                onOpenSettings()
+                            },
+                            enabled = !isSpinning,
+                            modifier = Modifier
+                                .size(34.dp)
+                                .clip(CircleShape)
+                                .background(customColors.surfaceDark)
+                                .testTag("theme_settings_nav_wheel_button")
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Palette,
+                                contentDescription = "Theme & Colors",
+                                tint = customColors.primaryAccent,
+                                modifier = Modifier.size(17.dp)
+                            )
+                        }
+
                         IconButton(
                             onClick = {
                                 soundManager?.playClickSound()
@@ -320,13 +341,13 @@ fun SpinWheelScreen(
                             modifier = Modifier
                                 .size(34.dp)
                                 .clip(CircleShape)
-                                .background(ArtisticMaroonDark)
+                                .background(customColors.surfaceDark)
                                 .testTag("history_nav_wheel_button")
                         ) {
                             Icon(
                                 imageVector = Icons.Default.History,
                                 contentDescription = "View Winnings & History",
-                                tint = ArtisticAmberGold,
+                                tint = customColors.primaryAccent,
                                 modifier = Modifier.size(18.dp)
                             )
                         }
@@ -339,13 +360,13 @@ fun SpinWheelScreen(
                             modifier = Modifier
                                 .size(34.dp)
                                 .clip(CircleShape)
-                                .background(ArtisticMaroonDark)
+                                .background(customColors.surfaceDark)
                                 .testTag("sound_toggle_button")
                         ) {
                             Icon(
                                 imageVector = if (isMuted) Icons.Default.VolumeOff else Icons.Default.VolumeUp,
                                 contentDescription = if (isMuted) "Unmute sound" else "Mute sound",
-                                tint = if (isMuted) ArtisticCreamSub else ArtisticAmberGold,
+                                tint = if (isMuted) customColors.textSecondary else customColors.primaryAccent,
                                 modifier = Modifier.size(18.dp)
                             )
                         }
@@ -416,7 +437,7 @@ fun SpinWheelScreen(
                                 WheelSpinPhase.ACCELERATION -> "TORQUE BUILDUP • ACCELERATING"
                                 WheelSpinPhase.DECELERATION -> "VISCOUS FRICTION • ${(physicsState.angularVelocityDegPerSec).toInt()}°/s"
                                 WheelSpinPhase.FINAL_LANDING -> "HARMONIC DETENT • LOCKING PRIZE..."
-                                WheelSpinPhase.LANDED -> "JACKPOT LANDED • ${physicsState.landedSector?.subText ?: "WINNER!"}"
+                                WheelSpinPhase.LANDED -> if (physicsState.isLandedPrizeWin) "JACKPOT LANDED • ${physicsState.landedSector?.primaryLabel ?: "WINNER!"}" else "SPIN COMPLETED • ${physicsState.landedSector?.primaryLabel ?: "TRY AGAIN"}"
                             },
                             color = when (physicsState.phase) {
                                 WheelSpinPhase.IDLE -> ArtisticCreamSub
@@ -515,10 +536,10 @@ fun SpinWheelScreen(
                         .testTag("spin_now_button"),
                     shape = RoundedCornerShape(18.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = ArtisticAmberGold,
-                        contentColor = ArtisticMaroonBg,
-                        disabledContainerColor = Color(0xFF381A1A),
-                        disabledContentColor = Color(0xFF7A4A4A)
+                        containerColor = customColors.primaryAccent,
+                        contentColor = customColors.textOnAccent,
+                        disabledContainerColor = customColors.primaryAccent.copy(alpha = 0.4f),
+                        disabledContentColor = customColors.textOnAccent.copy(alpha = 0.6f)
                     ),
                     elevation = ButtonDefaults.buttonElevation(
                         defaultElevation = 8.dp,
@@ -532,12 +553,13 @@ fun SpinWheelScreen(
                         Icon(
                             imageVector = if (isSpinning) Icons.Default.Redo else Icons.Default.Casino,
                             contentDescription = "Spin",
-                            tint = if (isSpinning) Color(0xFF7A4A4A) else ArtisticMaroonBg,
+                            tint = customColors.textOnAccent,
                             modifier = Modifier.size(26.dp)
                         )
                         Spacer(modifier = Modifier.width(10.dp))
                         Text(
                             text = if (isSpinning) "SPINNING 3D WHEEL..." else "SPIN THE 3D WHEEL NOW",
+                            color = customColors.textOnAccent,
                             fontSize = 15.sp,
                             fontWeight = FontWeight.Black,
                             letterSpacing = 1.5.sp
@@ -574,21 +596,14 @@ fun SpinWheelScreen(
         ) {
             Surface(
                 shape = RoundedCornerShape(24.dp),
-                color = ArtisticMaroonDark,
-                border = BorderStroke(2.5.dp, ArtisticAmberGold),
+                color = customColors.cardBg,
+                border = BorderStroke(2.dp, customColors.primaryAccent),
                 shadowElevation = 24.dp,
                 modifier = Modifier.shadow(24.dp, RoundedCornerShape(24.dp))
             ) {
                 Column(
                     modifier = Modifier
-                        .background(
-                            Brush.verticalGradient(
-                                colors = listOf(
-                                    ArtisticMaroonCard,
-                                    ArtisticMaroonDark
-                                )
-                            )
-                        )
+                        .background(customColors.cardBg)
                         .padding(horizontal = 24.dp, vertical = 20.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -596,12 +611,12 @@ fun SpinWheelScreen(
                     Icon(
                         imageVector = Icons.Default.Celebration,
                         contentDescription = "Celebration",
-                        tint = ArtisticAmberGold,
+                        tint = customColors.primaryAccent,
                         modifier = Modifier.size(48.dp)
                     )
                     Text(
                         text = "🎉 JACKPOT WINNER! 🎉",
-                        color = ArtisticAmberGold,
+                        color = customColors.primaryAccent,
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Black,
                         fontFamily = FontFamily.Serif,
@@ -609,7 +624,7 @@ fun SpinWheelScreen(
                     )
                     Text(
                         text = if (userName.isNotBlank()) "Congratulations, $userName!" else "Congratulations!",
-                        color = ArtisticAmberGlow,
+                        color = customColors.textPrimary,
                         fontSize = 17.sp,
                         fontWeight = FontWeight.Bold
                     )

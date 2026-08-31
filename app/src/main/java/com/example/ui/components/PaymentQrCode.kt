@@ -52,6 +52,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.model.Dish
+import com.example.ui.theme.AppTheme
 import com.example.ui.theme.ArtisticAmberContainer
 import com.example.ui.theme.ArtisticAmberGlow
 import com.example.ui.theme.ArtisticAmberGold
@@ -80,16 +81,17 @@ fun PaymentQrCodeCard(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
+    val customColors = AppTheme.customColors
     val upiId = "ganeshutsav.fest@upi"
 
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .shadow(12.dp, RoundedCornerShape(22.dp))
+            .shadow(6.dp, RoundedCornerShape(22.dp))
             .testTag("payment_qr_card"),
         shape = RoundedCornerShape(22.dp),
-        colors = CardDefaults.cardColors(containerColor = ArtisticMaroonSurface),
-        border = BorderStroke(1.5.dp, if (isPaid) GreenSuccess else ArtisticAmberGold)
+        colors = CardDefaults.cardColors(containerColor = customColors.cardBg),
+        border = BorderStroke(1.5.dp, if (isPaid) GreenSuccess else customColors.primaryAccent)
     ) {
         Column(
             modifier = Modifier
@@ -108,13 +110,13 @@ fun PaymentQrCodeCard(
                     Icon(
                         imageVector = Icons.Default.QrCodeScanner,
                         contentDescription = "QR Payment",
-                        tint = ArtisticAmberGold,
+                        tint = customColors.primaryAccent,
                         modifier = Modifier.size(20.dp)
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
                         text = if (isFreeItem && payableAmount == 0) "PAYMENT & COUNTER PASS" else "SCAN QR FOR PAYMENT",
-                        color = ArtisticAmberGlow,
+                        color = customColors.primaryAccent,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 1.2.sp
@@ -123,12 +125,12 @@ fun PaymentQrCodeCard(
 
                 Surface(
                     shape = RoundedCornerShape(8.dp),
-                    color = if (isPaid || (isFreeItem && payableAmount == 0)) GreenSuccess.copy(alpha = 0.2f) else ArtisticAmberContainer,
-                    border = BorderStroke(1.dp, if (isPaid || (isFreeItem && payableAmount == 0)) GreenSuccess else ArtisticAmberGold)
+                    color = if (isPaid || (isFreeItem && payableAmount == 0)) GreenSuccess.copy(alpha = 0.15f) else customColors.surfaceDark,
+                    border = BorderStroke(1.dp, if (isPaid || (isFreeItem && payableAmount == 0)) GreenSuccess else customColors.primaryAccent)
                 ) {
                     Text(
                         text = if (isPaid) "✓ PAID VIA QR" else if (isFreeItem && payableAmount == 0) "FREE WIN" else "PENDING",
-                        color = if (isPaid || (isFreeItem && payableAmount == 0)) GreenSuccess else ArtisticAmberGold,
+                        color = if (isPaid || (isFreeItem && payableAmount == 0)) GreenSuccess else customColors.primaryAccent,
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp)
@@ -139,8 +141,8 @@ fun PaymentQrCodeCard(
             // Bill Breakdown Strip
             Surface(
                 shape = RoundedCornerShape(12.dp),
-                color = ArtisticMaroonDark,
-                border = BorderStroke(0.8.dp, ArtisticAmberSubtle),
+                color = customColors.surfaceDark,
+                border = BorderStroke(1.dp, customColors.cardBorder),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Row(
@@ -153,7 +155,7 @@ fun PaymentQrCodeCard(
                     Column {
                         Text(
                             text = "${dish.title} (${dish.nativeTitle})",
-                            color = ArtisticCream,
+                            color = customColors.textPrimary,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Bold
                         )
@@ -161,14 +163,14 @@ fun PaymentQrCodeCard(
                             text = if (isFreeItem && quantity == 1) "1x Free Winning Treat"
                             else if (isFreeItem) "1x Free Win + ${quantity - 1}x Purchased @ ₹${dish.pricePerUnit}"
                             else "$quantity items × ₹${dish.pricePerUnit} Rs",
-                            color = ArtisticCreamSub,
+                            color = customColors.textSecondary,
                             fontSize = 11.sp
                         )
                     }
 
                     Text(
                         text = if (payableAmount == 0) "₹0 (FREE)" else "₹$payableAmount",
-                        color = if (payableAmount == 0) GreenSuccess else ArtisticAmberGold,
+                        color = if (payableAmount == 0) GreenSuccess else customColors.primaryAccent,
                         fontSize = 17.sp,
                         fontWeight = FontWeight.Black
                     )
@@ -179,10 +181,10 @@ fun PaymentQrCodeCard(
             Surface(
                 shape = RoundedCornerShape(16.dp),
                 color = Color.White,
-                border = BorderStroke(3.dp, ArtisticAmberGold),
+                border = BorderStroke(2.5.dp, customColors.primaryAccent),
                 modifier = Modifier
                     .size(190.dp)
-                    .shadow(8.dp, RoundedCornerShape(16.dp))
+                    .shadow(4.dp, RoundedCornerShape(16.dp))
                     .testTag("qr_code_graphic")
             ) {
                 Box(
@@ -199,8 +201,8 @@ fun PaymentQrCodeCard(
                     // Center G-Utsav Logo Badge
                     Surface(
                         shape = RoundedCornerShape(6.dp),
-                        color = ArtisticMaroonDark,
-                        border = BorderStroke(1.5.dp, ArtisticAmberGold),
+                        color = customColors.cardBg,
+                        border = BorderStroke(1.5.dp, customColors.primaryAccent),
                         modifier = Modifier.size(34.dp)
                     ) {
                         Box(contentAlignment = Alignment.Center) {
@@ -216,8 +218,8 @@ fun PaymentQrCodeCard(
             // UPI ID & Scan Note
             Surface(
                 shape = RoundedCornerShape(12.dp),
-                color = ArtisticMaroonDark,
-                border = BorderStroke(0.8.dp, ArtisticAmberGold.copy(alpha = 0.5f)),
+                color = customColors.surfaceDark,
+                border = BorderStroke(1.dp, customColors.cardBorder),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Row(
@@ -230,14 +232,14 @@ fun PaymentQrCodeCard(
                     Column {
                         Text(
                             text = "UPI ID: $upiId",
-                            color = ArtisticAmberGold,
+                            color = customColors.primaryAccent,
                             fontSize = 11.5.sp,
                             fontWeight = FontWeight.Bold,
                             fontFamily = FontFamily.Monospace
                         )
                         Text(
                             text = "Accepted on GPay, PhonePe, Paytm, BHIM",
-                            color = ArtisticCreamSub,
+                            color = customColors.textSecondary,
                             fontSize = 9.5.sp
                         )
                     }
@@ -253,7 +255,7 @@ fun PaymentQrCodeCard(
                         Icon(
                             imageVector = Icons.Default.ContentCopy,
                             contentDescription = "Copy UPI ID",
-                            tint = ArtisticAmberGold,
+                            tint = customColors.primaryAccent,
                             modifier = Modifier.size(16.dp)
                         )
                     }
@@ -270,19 +272,21 @@ fun PaymentQrCodeCard(
                         .testTag("btn_mark_as_paid"),
                     shape = RoundedCornerShape(14.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = GreenSuccess,
-                        contentColor = Color.Black
+                        containerColor = customColors.primaryAccent,
+                        contentColor = customColors.textOnAccent
                     )
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(
                             imageVector = Icons.Default.CheckCircle,
                             contentDescription = "Confirm Payment",
+                            tint = customColors.textOnAccent,
                             modifier = Modifier.size(18.dp)
                         )
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
                             text = "PAID ₹$payableAmount VIA QR (CONFIRM)",
+                            color = customColors.textOnAccent,
                             fontSize = 12.5.sp,
                             fontWeight = FontWeight.Black,
                             letterSpacing = 1.sp

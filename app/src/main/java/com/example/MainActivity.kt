@@ -58,10 +58,12 @@ import com.example.audio.FestiveSoundManager
 import com.example.audio.LocalFestiveSoundManager
 import com.example.model.AppScreen
 import com.example.ui.components.DiyaLamp
+import com.example.ui.components.ThemeSettingsDialog
 import com.example.ui.screens.FoodSelectionScreen
 import com.example.ui.screens.RewardResultScreen
 import com.example.ui.screens.SpinHistoryScreen
 import com.example.ui.screens.SpinWheelScreen
+import com.example.ui.theme.AppTheme
 import com.example.ui.theme.ArtisticAmberGold
 import com.example.ui.theme.ArtisticCream
 import com.example.ui.theme.ArtisticCreamSub
@@ -79,13 +81,17 @@ class MainActivity : ComponentActivity() {
         setContent {
             val context = LocalContext.current
             val soundManager = remember { FestiveSoundManager.getInstance(context) }
+            val application = context.applicationContext as? Application ?: application
+            val viewModel: WheelViewModel = viewModel(
+                factory = WheelViewModel.Factory(application)
+            )
+            val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
             CompositionLocalProvider(LocalFestiveSoundManager provides soundManager) {
-                MyApplicationTheme {
-                    val application = context.applicationContext as? Application ?: application
-                    val viewModel: WheelViewModel = viewModel(
-                        factory = WheelViewModel.Factory(application)
-                    )
+                MyApplicationTheme(
+                    themeMode = uiState.themeMode,
+                    colorPalette = uiState.colorPalette
+                ) {
                     Scaffold(
                         modifier = Modifier.fillMaxSize(),
                         contentWindowInsets = WindowInsets(0, 0, 0, 0)
@@ -116,11 +122,12 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun LuckySpinApp(
-    viewModel: WheelViewModel = viewModel()
+    viewModel: WheelViewModel
 ) {
     val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val soundManager = LocalFestiveSoundManager.current
+    val customColors = AppTheme.customColors
     var showExitConfirmationDialog by remember { mutableStateOf(false) }
 
     // Screen-specific Back Handlers
@@ -151,13 +158,24 @@ fun LuckySpinApp(
         }
     }
 
+    // Theme Settings Dialog
+    if (uiState.showThemeSettingsDialog) {
+        ThemeSettingsDialog(
+            currentThemeMode = uiState.themeMode,
+            currentColorPalette = uiState.colorPalette,
+            onThemeModeSelected = viewModel::setThemeMode,
+            onColorPaletteSelected = viewModel::setColorPalette,
+            onDismiss = viewModel::closeThemeSettings
+        )
+    }
+
     // Dashboard Exit Confirmation Dialog
     if (showExitConfirmationDialog) {
         AlertDialog(
             onDismissRequest = { showExitConfirmationDialog = false },
-            containerColor = ArtisticMaroonCard,
-            titleContentColor = ArtisticAmberGold,
-            textContentColor = ArtisticCream,
+            containerColor = customColors.cardBg,
+            titleContentColor = customColors.primaryAccent,
+            textContentColor = customColors.textPrimary,
             icon = {
                 Row(
                     horizontalArrangement = Arrangement.Center,
@@ -168,7 +186,7 @@ fun LuckySpinApp(
                     Icon(
                         imageVector = Icons.Default.ExitToApp,
                         contentDescription = "Exit",
-                        tint = ArtisticAmberGold,
+                        tint = customColors.primaryAccent,
                         modifier = Modifier.size(28.dp)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
@@ -194,13 +212,13 @@ fun LuckySpinApp(
                         text = "बाहेर पडायचे आहे का?",
                         fontSize = 15.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = ArtisticAmberGold,
+                        color = customColors.primaryAccent,
                         textAlign = TextAlign.Center
                     )
                     Text(
                         text = "Are you sure you want to exit the Ganesh Utsav Stall app? All recorded sales and history remain safely saved.",
                         fontSize = 13.sp,
-                        color = ArtisticCreamSub,
+                        color = customColors.textSecondary,
                         textAlign = TextAlign.Center,
                         lineHeight = 18.sp
                     )
@@ -213,14 +231,15 @@ fun LuckySpinApp(
                         (context as? Activity)?.finish()
                     },
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = ArtisticAmberGold,
-                        contentColor = ArtisticMaroonBg
+                        containerColor = customColors.primaryAccent,
+                        contentColor = customColors.textOnAccent
                     ),
                     shape = RoundedCornerShape(12.dp),
                     modifier = Modifier.testTag("confirm_exit_button")
                 ) {
                     Text(
                         text = "EXIT APP",
+                        color = customColors.textOnAccent,
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 1.sp
                     )
@@ -229,9 +248,9 @@ fun LuckySpinApp(
             dismissButton = {
                 OutlinedButton(
                     onClick = { showExitConfirmationDialog = false },
-                    border = BorderStroke(1.dp, ArtisticAmberGold),
+                    border = BorderStroke(1.dp, customColors.primaryAccent),
                     colors = ButtonDefaults.outlinedButtonColors(
-                        contentColor = ArtisticAmberGold
+                        contentColor = customColors.primaryAccent
                     ),
                     shape = RoundedCornerShape(12.dp),
                     modifier = Modifier.testTag("cancel_exit_button")
@@ -303,6 +322,10 @@ fun LuckySpinApp(
                     onOpenHistory = {
                         soundManager?.playClickSound()
                         viewModel.openHistory()
+                    },
+                    onOpenSettings = {
+                        soundManager?.playClickSound()
+                        viewModel.openThemeSettings()
                     }
                 )
             }
@@ -332,6 +355,10 @@ fun LuckySpinApp(
                     onOpenHistory = {
                         soundManager?.playClickSound()
                         viewModel.openHistory()
+                    },
+                    onOpenSettings = {
+                        soundManager?.playClickSound()
+                        viewModel.openThemeSettings()
                     }
                 )
             }
@@ -361,6 +388,10 @@ fun LuckySpinApp(
                     onOpenHistory = {
                         soundManager?.playClickSound()
                         viewModel.openHistory()
+                    },
+                    onOpenSettings = {
+                        soundManager?.playClickSound()
+                        viewModel.openThemeSettings()
                     }
                 )
             }
@@ -392,6 +423,10 @@ fun LuckySpinApp(
                         } else {
                             viewModel.navigateTo(AppScreen.Registration)
                         }
+                    },
+                    onOpenSettings = {
+                        soundManager?.playClickSound()
+                        viewModel.openThemeSettings()
                     }
                 )
             }

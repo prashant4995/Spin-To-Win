@@ -6,7 +6,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.data.local.AppDatabase
+import com.example.data.local.ColorPalette
 import com.example.data.local.SpinHistoryEntity
+import com.example.data.local.ThemeMode
+import com.example.data.local.ThemePreferences
 import com.example.data.repository.SpinHistoryRepository
 import com.example.model.AppScreen
 import com.example.model.Dish
@@ -22,46 +25,14 @@ import kotlin.random.Random
 
 class WheelViewModel(
     application: Application,
-    private val repository: SpinHistoryRepository
+    private val repository: SpinHistoryRepository,
+    private val themePreferences: ThemePreferences = ThemePreferences.getInstance(application)
 ) : AndroidViewModel(application) {
 
     constructor(application: Application) : this(
         application,
-        SpinHistoryRepository(AppDatabase.getDatabase(application).spinHistoryDao())
-    )
-
-    constructor() : this(
-        Application(),
-        SpinHistoryRepository(
-            object : com.example.data.local.SpinHistoryDao {
-                private val listFlow = kotlinx.coroutines.flow.MutableStateFlow<List<SpinHistoryEntity>>(emptyList())
-                override fun getAllHistory(): kotlinx.coroutines.flow.Flow<List<SpinHistoryEntity>> = listFlow
-                override fun getFreeWinningsHistory(): kotlinx.coroutines.flow.Flow<List<SpinHistoryEntity>> =
-                    kotlinx.coroutines.flow.MutableStateFlow(emptyList<SpinHistoryEntity>())
-                override fun getSoldHistory(): kotlinx.coroutines.flow.Flow<List<SpinHistoryEntity>> =
-                    kotlinx.coroutines.flow.MutableStateFlow(emptyList<SpinHistoryEntity>())
-                override fun getTotalSpinsCount() = kotlinx.coroutines.flow.MutableStateFlow(0)
-                override fun getTotalWinsCount() = kotlinx.coroutines.flow.MutableStateFlow(0)
-                override fun getTotalItemsSoldCount() = kotlinx.coroutines.flow.MutableStateFlow(0)
-                override fun getTotalItemsFreeCount() = kotlinx.coroutines.flow.MutableStateFlow(0)
-                override fun getTotalRevenue() = kotlinx.coroutines.flow.MutableStateFlow(0)
-                override suspend fun insertSpin(spin: SpinHistoryEntity): Long {
-                    listFlow.update { listOf(spin) + it }
-                    return 1L
-                }
-                override suspend fun markAsPaidViaQr(id: Long, amount: Int) {
-                    listFlow.update { list ->
-                        list.map { if (it.id == id) it.copy(isSold = true, isPaidViaQr = true, totalAmount = amount) else it }
-                    }
-                }
-                override suspend fun deleteById(id: Long) {
-                    listFlow.update { it.filterNot { item -> item.id == id } }
-                }
-                override suspend fun clearAllHistory() {
-                    listFlow.value = emptyList()
-                }
-            }
-        )
+        SpinHistoryRepository(AppDatabase.getDatabase(application).spinHistoryDao()),
+        ThemePreferences.getInstance(application)
     )
 
     class Factory(private val application: Application) : ViewModelProvider.Factory {
@@ -74,10 +45,27 @@ class WheelViewModel(
         }
     }
 
-    private val _uiState = MutableStateFlow(WheelUiState())
+    private val _uiState = MutableStateFlow(
+        WheelUiState(
+            themeMode = themePreferences.themeSettings.value.mode,
+            colorPalette = themePreferences.themeSettings.value.palette
+        )
+    )
     val uiState: StateFlow<WheelUiState> = _uiState.asStateFlow()
 
     init {
+        // Collect persistent theme settings
+        viewModelScope.launch {
+            themePreferences.themeSettings.collect { settings ->
+                _uiState.update { current ->
+                    current.copy(
+                        themeMode = settings.mode,
+                        colorPalette = settings.palette
+                    )
+                }
+            }
+        }
+
         // Collect persistent history and compute sold/free item metrics in real-time
         viewModelScope.launch {
             repository.allHistory.collect { history ->
@@ -130,19 +118,42 @@ class WheelViewModel(
 
     fun proceedToSpin() {
         val state = _uiState.value
-        if (state.userName.trim().isEmpty()) {
-            _uiState.update { it.copy(nameError = "Please enter your name to continue") }
-            return
-        }
-        if (state.selectedDish == null) {
-            return
-        }
+        val effectiveName = if (state.userName.trim().isEmpty()) "Guest" else state.userName.trim()
+        val effectiveDish = state.selectedDish ?: Dish.KHANDVI
 
-        _uiState.update {
-            it.copy(
-                nameError = null,
-                currentScreen = AppScreen.SpinWheel
+        if (state.quantity > 2) {
+            // Quantity > 2 unlocks the 3D Lucky Spin
+            _uiState.update {
+                it.copy(
+                    userName = effectiveName,
+                    selectedDish = effectiveDish,
+                    nameError = null,
+                    currentScreen = AppScreen.SpinWheel
+                )
+            }
+        } else {
+            // Quantity <= 2 proceeds directly to checkout / payment
+            val directResult = SpinResult(
+                isWin = false,
+                wonDish = null,
+                quantity = state.quantity,
+                userName = effectiveName,
+                isSold = false,
+                amountPaid = 0,
+                isPaidViaQr = false,
+                isDirectCheckout = true
             )
+            _uiState.update {
+                it.copy(
+                    userName = effectiveName,
+                    selectedDish = effectiveDish,
+                    nameError = null,
+                    lastResult = directResult,
+                    currentScreen = AppScreen.RewardResult,
+                    showPaymentQrModal = false,
+                    isPaymentSuccess = false
+                )
+            }
         }
     }
 
@@ -153,8 +164,17 @@ class WheelViewModel(
         val state = _uiState.value
         if (state.isSpinning) return
 
-        // 50% Win Probability for festival excitement
-        val targetSectorIndex = Random.nextInt(0, 4)
+        // 1 in 15 Winning Probability (approx 6.67% win rate)
+        val isWin = Random.nextInt(15) == 0
+
+        val targetSectorIndex = if (isWin) {
+            val winIndices = state.sectors.indices.filter { state.sectors[it].type == SectorType.WIN }
+            if (winIndices.isNotEmpty()) winIndices.random() else 0
+        } else {
+            val nonWinIndices = state.sectors.indices.filter { state.sectors[it].type == SectorType.TRY_AGAIN }
+            if (nonWinIndices.isNotEmpty()) nonWinIndices.random() else 1
+        }
+
         val targetSector = state.sectors[targetSectorIndex]
 
         val sectorCenterAngle = (targetSectorIndex * 90f + 45f)
@@ -347,9 +367,28 @@ class WheelViewModel(
                 totalWins = current.totalWins,
                 totalItemsSold = current.totalItemsSold,
                 totalItemsFree = current.totalItemsFree,
-                totalRevenue = current.totalRevenue
+                totalRevenue = current.totalRevenue,
+                themeMode = current.themeMode,
+                colorPalette = current.colorPalette,
+                showThemeSettingsDialog = current.showThemeSettingsDialog
             )
         }
+    }
+
+    fun setThemeMode(mode: ThemeMode) {
+        themePreferences.setThemeMode(mode)
+    }
+
+    fun setColorPalette(palette: ColorPalette) {
+        themePreferences.setColorPalette(palette)
+    }
+
+    fun openThemeSettings() {
+        _uiState.update { it.copy(showThemeSettingsDialog = true) }
+    }
+
+    fun closeThemeSettings() {
+        _uiState.update { it.copy(showThemeSettingsDialog = false) }
     }
 
     fun openHistory() {

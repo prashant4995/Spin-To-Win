@@ -1,6 +1,7 @@
 package com.example.audio
 
 import android.content.Context
+import android.content.Intent
 import android.media.AudioAttributes
 import android.media.SoundPool
 import android.speech.tts.TextToSpeech
@@ -53,14 +54,14 @@ class FestiveSoundManager private constructor(private val context: Context) : Te
 
     init {
         initializeSoundPool()
-        initializeTts()
     }
 
     private fun initializeTts() {
+        if (textToSpeech != null) return
         try {
-            textToSpeech = TextToSpeech(context, this)
-        } catch (e: Exception) {
-            Log.w("FestiveSoundManager", "Error creating TextToSpeech", e)
+            textToSpeech = TextToSpeech(context.applicationContext, this)
+        } catch (e: Throwable) {
+            Log.w("FestiveSoundManager", "TTS initialization bypassed or not supported", e)
         }
     }
 
@@ -85,12 +86,12 @@ class FestiveSoundManager private constructor(private val context: Context) : Te
     private fun initializeSoundPool() {
         try {
             val audioAttributes = AudioAttributes.Builder()
-                .setUsage(AudioAttributes.USAGE_GAME)
+                .setUsage(AudioAttributes.USAGE_MEDIA)
                 .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
                 .build()
 
             soundPool = SoundPool.Builder()
-                .setMaxStreams(6)
+                .setMaxStreams(4)
                 .setAudioAttributes(audioAttributes)
                 .build().apply {
                     setOnLoadCompleteListener { _, sampleId, status ->
@@ -267,7 +268,7 @@ class FestiveSoundManager private constructor(private val context: Context) : Te
      * Plays an individual dynamic ratchet peg tick with variable pitch and volume.
      */
     fun playRatchetTick(pitch: Float = 1.0f, volume: Float = 0.5f) {
-        if (_isMuted.value) return
+        if (_isMuted.value || activeSpinStreamId != 0) return
         try {
             val sp = soundPool ?: return
             if (clickSoundId != 0) {
@@ -309,11 +310,14 @@ class FestiveSoundManager private constructor(private val context: Context) : Te
     fun speakText(text: String) {
         if (_isMuted.value) return
         try {
+            if (textToSpeech == null) {
+                initializeTts()
+            }
             if (isTtsReady && textToSpeech != null) {
                 textToSpeech?.stop()
                 textToSpeech?.speak(text, TextToSpeech.QUEUE_FLUSH, null, "LUCKY_SPIN_ANNOUNCEMENT_${System.currentTimeMillis()}")
             }
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             Log.w("FestiveSoundManager", "Error in TextToSpeech announcement", e)
         }
     }
