@@ -87,10 +87,11 @@ fun PaymentQrCodeCard(
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .shadow(6.dp, RoundedCornerShape(22.dp))
+            .shadow(12.dp, RoundedCornerShape(22.dp))
             .testTag("payment_qr_card"),
         shape = RoundedCornerShape(22.dp),
         colors = CardDefaults.cardColors(containerColor = customColors.cardBg),
+        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
         border = BorderStroke(1.5.dp, if (isPaid) GreenSuccess else customColors.primaryAccent)
     ) {
         Column(
@@ -143,7 +144,9 @@ fun PaymentQrCodeCard(
                 shape = RoundedCornerShape(12.dp),
                 color = customColors.surfaceDark,
                 border = BorderStroke(1.dp, customColors.cardBorder),
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .shadow(4.dp, RoundedCornerShape(12.dp))
             ) {
                 Row(
                     modifier = Modifier
@@ -184,7 +187,7 @@ fun PaymentQrCodeCard(
                 border = BorderStroke(2.5.dp, customColors.primaryAccent),
                 modifier = Modifier
                     .size(190.dp)
-                    .shadow(4.dp, RoundedCornerShape(16.dp))
+                    .shadow(8.dp, RoundedCornerShape(16.dp))
                     .testTag("qr_code_graphic")
             ) {
                 Box(
@@ -220,7 +223,9 @@ fun PaymentQrCodeCard(
                 shape = RoundedCornerShape(12.dp),
                 color = customColors.surfaceDark,
                 border = BorderStroke(1.dp, customColors.cardBorder),
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .shadow(3.dp, RoundedCornerShape(12.dp))
             ) {
                 Row(
                     modifier = Modifier
@@ -269,11 +274,16 @@ fun PaymentQrCodeCard(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(48.dp)
+                        .shadow(8.dp, RoundedCornerShape(14.dp))
                         .testTag("btn_mark_as_paid"),
                     shape = RoundedCornerShape(14.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = customColors.primaryAccent,
                         contentColor = customColors.textOnAccent
+                    ),
+                    elevation = ButtonDefaults.buttonElevation(
+                        defaultElevation = 6.dp,
+                        pressedElevation = 2.dp
                     )
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {

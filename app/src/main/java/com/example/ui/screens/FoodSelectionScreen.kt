@@ -136,7 +136,9 @@ fun FoodSelectionScreen(
             ) {
                 // Header Banner: Eyebrow + Serif Italic Greeting + Diya Lamps
                 Surface(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .shadow(8.dp, RoundedCornerShape(20.dp)),
                     shape = RoundedCornerShape(20.dp),
                     color = customColors.cardBg,
                     border = BorderStroke(1.2.dp, customColors.cardBorder)
@@ -255,10 +257,13 @@ fun FoodSelectionScreen(
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .shadow(8.dp, RoundedCornerShape(20.dp)),
+                        .shadow(10.dp, RoundedCornerShape(20.dp)),
                     shape = RoundedCornerShape(20.dp),
                     colors = CardDefaults.cardColors(
                         containerColor = customColors.cardBg
+                    ),
+                    elevation = CardDefaults.cardElevation(
+                        defaultElevation = 6.dp
                     ),
                     border = BorderStroke(1.2.dp, customColors.cardBorder)
                 ) {
@@ -396,6 +401,7 @@ fun FoodSelectionScreen(
                 Surface(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .shadow(8.dp, RoundedCornerShape(20.dp))
                         .testTag("quantity_selector_card"),
                     shape = RoundedCornerShape(20.dp),
                     color = customColors.cardBg,
@@ -537,7 +543,9 @@ fun FoodSelectionScreen(
                             shape = RoundedCornerShape(12.dp),
                             color = customColors.surfaceDark,
                             border = BorderStroke(1.dp, customColors.cardBorder),
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .shadow(4.dp, RoundedCornerShape(12.dp))
                         ) {
                             Row(
                                 modifier = Modifier
@@ -582,7 +590,9 @@ fun FoodSelectionScreen(
                     shape = RoundedCornerShape(16.dp),
                     color = if (isLuckySpinUnlocked) customColors.surfaceDark else customColors.surfaceDark,
                     border = BorderStroke(1.dp, if (isLuckySpinUnlocked) customColors.primaryAccent.copy(alpha = 0.5f) else customColors.cardBorder),
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .shadow(4.dp, RoundedCornerShape(16.dp))
                 ) {
                     Row(
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 11.dp),
@@ -615,7 +625,7 @@ fun FoodSelectionScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(60.dp)
-                        .shadow(10.dp, RoundedCornerShape(18.dp))
+                        .shadow(12.dp, RoundedCornerShape(18.dp))
                         .testTag("proceed_spin_button"),
                     shape = RoundedCornerShape(18.dp),
                     colors = ButtonDefaults.buttonColors(
@@ -676,10 +686,13 @@ private fun DishCard(
     Card(
         onClick = onSelect,
         modifier = modifier
-            .shadow(if (isSelected) 12.dp else 3.dp, RoundedCornerShape(20.dp)),
+            .shadow(if (isSelected) 14.dp else 6.dp, RoundedCornerShape(20.dp)),
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(
             containerColor = if (isSelected) customColors.cardBgSubtle else customColors.cardBg
+        ),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = if (isSelected) 8.dp else 4.dp
         ),
         border = BorderStroke(borderWidth, borderColor)
     ) {

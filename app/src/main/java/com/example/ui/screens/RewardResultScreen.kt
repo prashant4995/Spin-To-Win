@@ -193,6 +193,9 @@ private fun WinContent(
             colors = CardDefaults.cardColors(
                 containerColor = customColors.cardBg
             ),
+            elevation = CardDefaults.cardElevation(
+                defaultElevation = 10.dp
+            ),
             border = BorderStroke(2.dp, customColors.primaryAccent)
         ) {
             Column(
@@ -249,7 +252,9 @@ private fun WinContent(
                     shape = RoundedCornerShape(14.dp),
                     color = customColors.surfaceDark,
                     border = BorderStroke(1.2.dp, customColors.primaryAccent),
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .shadow(4.dp, RoundedCornerShape(14.dp))
                 ) {
                     Column(
                         modifier = Modifier.padding(10.dp),
@@ -275,7 +280,9 @@ private fun WinContent(
                     shape = RoundedCornerShape(14.dp),
                     color = customColors.surfaceDark,
                     border = BorderStroke(1.dp, customColors.cardBorder),
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .shadow(4.dp, RoundedCornerShape(14.dp))
                 ) {
                     Column(modifier = Modifier.padding(12.dp)) {
                         Text(
@@ -420,11 +427,14 @@ private fun TryAgainContent(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .shadow(16.dp, RoundedCornerShape(26.dp))
+            .shadow(18.dp, RoundedCornerShape(26.dp))
             .testTag("try_again_card"),
         shape = RoundedCornerShape(26.dp),
         colors = CardDefaults.cardColors(
             containerColor = customColors.cardBg
+        ),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = 8.dp
         ),
         border = BorderStroke(1.5.dp, customColors.cardBorder)
     ) {

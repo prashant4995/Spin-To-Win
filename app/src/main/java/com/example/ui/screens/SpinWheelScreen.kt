@@ -256,7 +256,8 @@ fun SpinWheelScreen(
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 6.dp),
+                    .padding(horizontal = 16.dp, vertical = 6.dp)
+                    .shadow(8.dp, RoundedCornerShape(18.dp)),
                 shape = RoundedCornerShape(18.dp),
                 color = customColors.cardBg,
                 border = BorderStroke(1.dp, customColors.cardBorder)
@@ -406,7 +407,9 @@ fun SpinWheelScreen(
                             WheelSpinPhase.LANDED -> if (physicsState.isLandedPrizeWin) ArtisticAmberGold else ArtisticAmberSubtle
                         }
                     ),
-                    modifier = Modifier.testTag("physics_phase_pill")
+                    modifier = Modifier
+                        .shadow(6.dp, RoundedCornerShape(20.dp))
+                        .testTag("physics_phase_pill")
                 ) {
                     Row(
                         modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
@@ -482,7 +485,9 @@ fun SpinWheelScreen(
                         shape = RoundedCornerShape(16.dp),
                         color = ArtisticMaroonCard,
                         border = BorderStroke(1.2.dp, ArtisticAmberGold),
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .shadow(10.dp, RoundedCornerShape(16.dp))
                     ) {
                         Row(
                             modifier = Modifier.padding(12.dp),
@@ -532,7 +537,7 @@ fun SpinWheelScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(60.dp)
-                        .shadow(if (!isSpinning) 10.dp else 0.dp, RoundedCornerShape(18.dp))
+                        .shadow(if (!isSpinning) 12.dp else 0.dp, RoundedCornerShape(18.dp))
                         .testTag("spin_now_button"),
                     shape = RoundedCornerShape(18.dp),
                     colors = ButtonDefaults.buttonColors(

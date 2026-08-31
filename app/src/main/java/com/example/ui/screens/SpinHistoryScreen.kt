@@ -272,9 +272,10 @@ fun SpinHistoryScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 14.dp, vertical = 4.dp)
-                    .shadow(10.dp, RoundedCornerShape(18.dp)),
+                    .shadow(12.dp, RoundedCornerShape(18.dp)),
                 shape = RoundedCornerShape(18.dp),
                 colors = CardDefaults.cardColors(containerColor = ArtisticMaroonCard),
+                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
                 border = BorderStroke(1.5.dp, FestiveCardBorder)
             ) {
                 Column(
@@ -385,7 +386,9 @@ fun SpinHistoryScreen(
                         shape = RoundedCornerShape(10.dp),
                         color = ArtisticMaroonDark,
                         border = BorderStroke(0.8.dp, ArtisticAmberSubtle),
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .shadow(4.dp, RoundedCornerShape(10.dp))
                     ) {
                         Row(
                             modifier = Modifier
@@ -621,9 +624,10 @@ private fun SpinHistoryCard(
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .shadow(4.dp, RoundedCornerShape(16.dp)),
+            .shadow(6.dp, RoundedCornerShape(16.dp)),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = ArtisticMaroonCard),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
         border = BorderStroke(
             width = if (isFree) 1.5.dp else if (isSold) 1.2.dp else 1.dp,
             color = if (isFree) ArtisticAmberGold else if (isSold) GreenSuccess else FestiveCardBorder
