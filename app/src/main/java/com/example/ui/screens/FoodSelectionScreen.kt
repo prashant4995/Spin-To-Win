@@ -360,21 +360,30 @@ fun FoodSelectionScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(
-                            text = "Select Festive Delicacy",
-                            color = customColors.textPrimary,
-                            fontSize = 17.sp,
-                            fontWeight = FontWeight.ExtraBold
-                        )
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Select Festive Delicacy",
+                                color = customColors.textPrimary,
+                                fontSize = 17.sp,
+                                fontWeight = FontWeight.ExtraBold
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = "👇 Tap any delicacy below to select",
+                                color = customColors.primaryAccent,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
 
                         if (selectedDish != null) {
                             Surface(
                                 shape = RoundedCornerShape(10.dp),
                                 color = customColors.primaryAccent,
-                                modifier = Modifier.padding(2.dp)
+                                modifier = Modifier.padding(start = 6.dp)
                             ) {
                                 Text(
-                                    text = "${selectedDish.title} Selected",
+                                    text = "✓ ${selectedDish.title}",
                                     color = customColors.textOnAccent,
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 11.sp,
@@ -701,17 +710,11 @@ private fun DishCard(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Dish Illustration Graphic Box
-                Box(
-                    modifier = Modifier
-                        .size(72.dp)
-                        .clip(RoundedCornerShape(14.dp))
-                ) {
-                    DishIllustration(
-                        dish = dish,
-                        modifier = Modifier.fillMaxSize()
-                    )
-                }
+                // Dish Illustration Graphic Icon (White Background with Shadow)
+                DishIllustration(
+                    dish = dish,
+                    modifier = Modifier.size(74.dp)
+                )
 
                 Spacer(modifier = Modifier.width(12.dp))
 
@@ -745,17 +748,26 @@ private fun DishCard(
 
                         Spacer(modifier = Modifier.width(8.dp))
 
-                        // Price Pill (₹40, ₹30, ₹55)
-                        Surface(
-                            shape = RoundedCornerShape(10.dp),
-                            color = customColors.primaryAccent
-                        ) {
+                        Column(horizontalAlignment = Alignment.End) {
+                            // Price Pill (₹40, ₹30, ₹55)
+                            Surface(
+                                shape = RoundedCornerShape(10.dp),
+                                color = customColors.primaryAccent
+                            ) {
+                                Text(
+                                    text = "₹${dish.pricePerUnit}",
+                                    color = customColors.textOnAccent,
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Black,
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(4.dp))
                             Text(
-                                text = "₹${dish.pricePerUnit}",
-                                color = customColors.textOnAccent,
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.Black,
-                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
+                                text = if (isSelected) "✓ Chosen" else "Tap to choose",
+                                color = if (isSelected) customColors.primaryAccent else customColors.textSecondary,
+                                fontSize = 10.5.sp,
+                                fontWeight = FontWeight.Bold
                             )
                         }
                     }
@@ -767,19 +779,31 @@ private fun DishCard(
             // Action Selection Strip
             Surface(
                 onClick = onSelect,
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .shadow(if (isSelected) 4.dp else 1.dp, RoundedCornerShape(10.dp)),
                 shape = RoundedCornerShape(10.dp),
                 color = if (isSelected) customColors.primaryAccent else customColors.surfaceDark,
-                border = BorderStroke(1.dp, if (isSelected) customColors.primaryAccent else customColors.cardBorder)
-            ) {
-                Text(
-                    text = if (isSelected) "✓ SELECTED (₹${dish.pricePerUnit})" else "TAP TO SELECT (₹${dish.pricePerUnit})",
-                    color = if (isSelected) customColors.textOnAccent else customColors.textSecondary,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 11.5.sp,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(vertical = 6.dp)
+                border = BorderStroke(
+                    1.2.dp,
+                    if (isSelected) customColors.primaryAccent else customColors.primaryAccent.copy(alpha = 0.5f)
                 )
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 7.dp, horizontal = 12.dp),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = if (isSelected) "✓ SELECTED • ₹${dish.pricePerUnit}" else "👆 TAP TO SELECT • ₹${dish.pricePerUnit}",
+                        color = if (isSelected) customColors.textOnAccent else customColors.primaryAccent,
+                        fontWeight = FontWeight.Black,
+                        fontSize = 12.sp,
+                        textAlign = TextAlign.Center
+                    )
+                }
             }
         }
     }

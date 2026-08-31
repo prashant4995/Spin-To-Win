@@ -7,6 +7,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -735,12 +736,14 @@ private fun SpinHistoryCard(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Dish Emoji Avatar
+                // Dish Emoji Avatar (White with shadow)
                 Box(
                     modifier = Modifier
                         .size(42.dp)
+                        .shadow(4.dp, CircleShape)
                         .clip(CircleShape)
-                        .background(if (isFree) ArtisticAmberContainer else ArtisticMaroonDark),
+                        .background(Color.White)
+                        .border(1.dp, Color(0xFFE2E8F0), CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(

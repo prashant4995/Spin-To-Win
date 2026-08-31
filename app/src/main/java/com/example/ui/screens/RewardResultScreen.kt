@@ -233,19 +233,13 @@ private fun WinContent(
                     DiyaLamp(modifier = Modifier.size(36.dp))
                 }
 
-                // Won Dish Graphic Art Box
-                Box(
+                // Won Dish Graphic Art Box (White background with shadow)
+                DishIllustration(
+                    dish = dish,
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(150.dp)
-                        .shadow(10.dp, RoundedCornerShape(18.dp))
-                        .clip(RoundedCornerShape(18.dp))
-                ) {
-                    DishIllustration(
-                        dish = dish,
-                        modifier = Modifier.fillMaxSize()
-                    )
-                }
+                )
 
                 // Dish Title & Win Banner
                 Surface(

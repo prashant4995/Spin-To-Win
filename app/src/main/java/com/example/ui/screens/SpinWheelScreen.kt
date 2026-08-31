@@ -61,6 +61,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -291,19 +292,25 @@ fun SpinWheelScreen(
 
                         Spacer(modifier = Modifier.width(10.dp))
 
-                        Column {
+                        Column(modifier = Modifier.weight(1f, fill = false)) {
                             Text(
                                 text = "Namaste, $userName! 🎊",
                                 color = customColors.primaryAccent,
                                 fontFamily = FontFamily.Serif,
                                 fontStyle = FontStyle.Italic,
                                 fontWeight = FontWeight.Bold,
-                                fontSize = 16.sp
+                                fontSize = 15.sp,
+                                maxLines = 1,
+                                softWrap = false,
+                                overflow = TextOverflow.Ellipsis
                             )
                             Text(
                                 text = "Spin to win free ${selectedDish?.title ?: "delicacy"}!",
                                 color = customColors.textSecondary,
-                                fontSize = 11.5.sp
+                                fontSize = 11.sp,
+                                maxLines = 1,
+                                softWrap = false,
+                                overflow = TextOverflow.Ellipsis
                             )
                         }
                     }
@@ -493,16 +500,11 @@ fun SpinWheelScreen(
                             modifier = Modifier.padding(12.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(68.dp)
-                                    .clip(RoundedCornerShape(12.dp))
-                            ) {
-                                DishIllustration(
-                                    dish = dish,
-                                    modifier = Modifier.fillMaxSize()
-                                )
-                            }
+                            // Dish Illustration Icon (White background with shadow)
+                            DishIllustration(
+                                dish = dish,
+                                modifier = Modifier.size(68.dp)
+                            )
 
                             Spacer(modifier = Modifier.width(12.dp))
 
