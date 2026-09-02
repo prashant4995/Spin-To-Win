@@ -24,6 +24,7 @@ enum class Dish(
     val highlights: List<String>,
     val emoji: String,
     val pricePerUnit: Int, // Base / Standard price
+    val portionUnit: String,
     val qualityOptions: List<QualityOption>
 ) {
     MODAK(
@@ -35,6 +36,7 @@ enum class Dish(
         highlights = listOf("Steamed Modak", "Pure Ghee", "Fresh Coconut"),
         emoji = "✨",
         pricePerUnit = 40,
+        portionUnit = "piece",
         qualityOptions = listOf(
             QualityOption(
                 id = "modak_standard",
@@ -80,6 +82,7 @@ enum class Dish(
         highlights = listOf("Khandvi Rolls", "Steamed Tadka", "Sesame & Coconut"),
         emoji = "🟡",
         pricePerUnit = 30,
+        portionUnit = "plate",
         qualityOptions = listOf(
             QualityOption(
                 id = "khandvi_standard",
@@ -125,6 +128,7 @@ enum class Dish(
         highlights = listOf("Festive Combo", "Modak + Khandvi", "Best Value"),
         emoji = "🍱",
         pricePerUnit = 55,
+        portionUnit = "combo plate",
         qualityOptions = listOf(
             QualityOption(
                 id = "combo_standard",
@@ -173,9 +177,18 @@ sealed interface AppScreen {
     data object History : AppScreen
 }
 
+data class OrderItem(
+    val dish: Dish,
+    val quantity: Int,
+    val unitPrice: Int = dish.pricePerUnit
+) {
+    val totalPrice: Int get() = quantity * unitPrice
+}
+
 data class SpinResult(
     val isWin: Boolean,
     val wonDish: Dish?,
+    val items: List<OrderItem> = emptyList(),
     val qualityOption: QualityOption? = null,
     val quantity: Int = 1,
     val userName: String,

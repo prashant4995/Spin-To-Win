@@ -52,6 +52,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.model.Dish
+import com.example.model.OrderItem
 import com.example.model.QualityOption
 import com.example.ui.theme.AppTheme
 import com.example.ui.theme.ArtisticAmberContainer
@@ -73,8 +74,9 @@ import kotlin.math.sin
  */
 @Composable
 fun PaymentQrCodeCard(
-    dish: Dish,
-    quantity: Int,
+    dish: Dish? = null,
+    orderItems: List<OrderItem> = emptyList(),
+    quantity: Int = 1,
     payableAmount: Int,
     isPaid: Boolean,
     isFreeItem: Boolean = false,
@@ -85,7 +87,7 @@ fun PaymentQrCodeCard(
     val context = LocalContext.current
     val customColors = AppTheme.customColors
     val upiId = "ganeshutsav.fest@upi"
-    val effectiveUnitPrice = qualityOption?.price ?: dish.pricePerUnit
+    val effectiveDish = dish ?: orderItems.firstOrNull()?.dish ?: Dish.KHANDVI
 
     Card(
         modifier = modifier
@@ -151,46 +153,74 @@ fun PaymentQrCodeCard(
                     .fillMaxWidth()
                     .shadow(4.dp, RoundedCornerShape(12.dp))
             ) {
-                Row(
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 12.dp, vertical = 8.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                        .padding(horizontal = 12.dp, vertical = 10.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (orderItems.isNotEmpty()) {
+                        orderItems.forEach { item ->
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "${item.dish.title} (${item.quantity}x)",
+                                    color = customColors.textPrimary,
+                                    fontSize = 12.5.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Text(
+                                    text = "₹${item.totalPrice}",
+                                    color = customColors.textSecondary,
+                                    fontSize = 12.5.sp,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
+                        }
+                        if (isFreeItem) {
                             Text(
-                                text = "${dish.title} (${dish.nativeTitle})",
+                                text = "🎁 Free 1x Prize applied!",
+                                color = GreenSuccess,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    } else {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "${effectiveDish.title} ($quantity items)",
                                 color = customColors.textPrimary,
                                 fontSize = 13.sp,
                                 fontWeight = FontWeight.Bold
                             )
-                            if (qualityOption != null) {
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text(
-                                    text = "• ${qualityOption.badge}",
-                                    color = customColors.primaryAccent,
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
                         }
-                        Text(
-                            text = if (isFreeItem && quantity == 1) "1x Free Winning Treat (${qualityOption?.name ?: "Standard"})"
-                            else if (isFreeItem) "1x Free Win + ${quantity - 1}x Purchased (${qualityOption?.name ?: ""}) @ ₹$effectiveUnitPrice"
-                            else "$quantity items × ₹$effectiveUnitPrice Rs (${qualityOption?.name ?: "Standard"})",
-                            color = customColors.textSecondary,
-                            fontSize = 11.sp
-                        )
                     }
 
-                    Text(
-                        text = if (payableAmount == 0) "₹0 (FREE)" else "₹$payableAmount",
-                        color = if (payableAmount == 0) GreenSuccess else customColors.primaryAccent,
-                        fontSize = 17.sp,
-                        fontWeight = FontWeight.Black
-                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Payable",
+                            color = customColors.textPrimary,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.ExtraBold
+                        )
+                        Text(
+                            text = if (payableAmount == 0) "₹0 (FREE)" else "₹$payableAmount",
+                            color = if (payableAmount == 0) GreenSuccess else customColors.primaryAccent,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Black
+                        )
+                    }
                 }
             }
 
@@ -212,7 +242,7 @@ fun PaymentQrCodeCard(
                 ) {
                     FestiveQrPattern(
                         amount = payableAmount,
-                        dishTag = dish.name
+                        dishTag = effectiveDish.name
                     )
 
                     // Center G-Utsav Logo Badge

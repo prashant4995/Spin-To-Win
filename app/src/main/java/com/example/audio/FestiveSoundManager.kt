@@ -146,7 +146,7 @@ class FestiveSoundManager private constructor(private val context: Context) : So
     private fun initializeSoundPool() {
         try {
             val audioAttributes = AudioAttributes.Builder()
-                .setUsage(AudioAttributes.USAGE_MEDIA)
+                .setUsage(AudioAttributes.USAGE_GAME)
                 .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
                 .build()
 
@@ -156,7 +156,9 @@ class FestiveSoundManager private constructor(private val context: Context) : So
                 .build().apply {
                     setOnLoadCompleteListener { _, sampleId, status ->
                         if (status == 0) {
-                            loadedSoundIds.add(sampleId)
+                            synchronized(loadedSoundIds) {
+                                loadedSoundIds.add(sampleId)
+                            }
                         }
                     }
                 }
@@ -250,6 +252,13 @@ class FestiveSoundManager private constructor(private val context: Context) : So
         }
     }
 
+    private fun isSoundLoaded(soundId: Int): Boolean {
+        if (soundId == 0) return false
+        return synchronized(loadedSoundIds) {
+            loadedSoundIds.contains(soundId)
+        }
+    }
+
     /**
      * Plays the festive wheel spinning sound (4.6-second decelerating ratchet ticking + whirl).
      */
@@ -258,7 +267,7 @@ class FestiveSoundManager private constructor(private val context: Context) : So
         stopSpinSound()
         try {
             val sp = soundPool ?: return
-            if (spinSoundId != 0) {
+            if (isSoundLoaded(spinSoundId)) {
                 activeSpinStreamId = sp.play(spinSoundId, 0.95f, 0.95f, 2, 0, 1.0f)
             }
         } catch (e: Exception) {
@@ -287,7 +296,7 @@ class FestiveSoundManager private constructor(private val context: Context) : So
         if (_isMuted.value) return
         try {
             val sp = soundPool ?: return
-            val soundId = if (wheelClickSoundId != 0) wheelClickSoundId else clickSoundId
+            val soundId = if (isSoundLoaded(wheelClickSoundId)) wheelClickSoundId else if (isSoundLoaded(clickSoundId)) clickSoundId else 0
             if (soundId != 0) {
                 val pitch = (0.90f + velocityFactor * 0.25f).coerceIn(0.7f, 1.6f)
                 val volume = (0.55f + velocityFactor * 0.25f).coerceIn(0.3f, 0.95f)
@@ -305,7 +314,7 @@ class FestiveSoundManager private constructor(private val context: Context) : So
         if (_isMuted.value) return
         try {
             val sp = soundPool ?: return
-            val soundId = if (wheelClickSoundId != 0) wheelClickSoundId else clickSoundId
+            val soundId = if (isSoundLoaded(wheelClickSoundId)) wheelClickSoundId else if (isSoundLoaded(clickSoundId)) clickSoundId else 0
             if (soundId != 0) {
                 val clampedPitch = pitch.coerceIn(0.6f, 1.8f)
                 val clampedVol = volume.coerceIn(0.1f, 0.9f)
@@ -323,7 +332,7 @@ class FestiveSoundManager private constructor(private val context: Context) : So
         if (_isMuted.value) return
         try {
             val sp = soundPool ?: return
-            val soundId = if (celebrationSoundId != 0) celebrationSoundId else winChimeSoundId
+            val soundId = if (isSoundLoaded(celebrationSoundId)) celebrationSoundId else if (isSoundLoaded(winChimeSoundId)) winChimeSoundId else 0
             if (soundId != 0) {
                 sp.play(soundId, 1.0f, 1.0f, 3, 0, 1.0f)
             }
@@ -346,7 +355,7 @@ class FestiveSoundManager private constructor(private val context: Context) : So
         if (_isMuted.value) return
         try {
             val sp = soundPool ?: return
-            if (claimChimeSoundId != 0) {
+            if (isSoundLoaded(claimChimeSoundId)) {
                 sp.play(claimChimeSoundId, 1.0f, 1.0f, 3, 0, 1.0f)
             }
         } catch (e: Exception) {
@@ -361,7 +370,7 @@ class FestiveSoundManager private constructor(private val context: Context) : So
         if (_isMuted.value) return
         try {
             val sp = soundPool ?: return
-            if (tryAgainSoundId != 0) {
+            if (isSoundLoaded(tryAgainSoundId)) {
                 sp.play(tryAgainSoundId, 0.8f, 0.8f, 1, 0, 1.0f)
             }
         } catch (e: Exception) {
@@ -376,7 +385,7 @@ class FestiveSoundManager private constructor(private val context: Context) : So
         if (_isMuted.value) return
         try {
             val sp = soundPool ?: return
-            if (clickSoundId != 0) {
+            if (isSoundLoaded(clickSoundId)) {
                 sp.play(clickSoundId, 0.6f, 0.6f, 1, 0, 1.0f)
             }
         } catch (e: Exception) {

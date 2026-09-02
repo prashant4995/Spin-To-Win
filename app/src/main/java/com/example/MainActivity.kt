@@ -298,25 +298,14 @@ fun LuckySpinApp(
                 FoodSelectionScreen(
                     userName = uiState.userName,
                     nameError = uiState.nameError,
-                    selectedDish = uiState.selectedDish,
-                    selectedQualityOption = uiState.selectedQualityOption,
-                    quantity = uiState.quantity,
+                    dishQuantities = uiState.dishQuantities,
+                    totalQuantity = uiState.totalOrderQuantity,
+                    totalOrderAmount = uiState.currentTotalAmount,
                     canProceed = uiState.canProceedToSpin,
                     onNameChanged = viewModel::updateName,
-                    onDishSelected = { dish ->
-                        soundManager?.playClickSound()
-                        viewModel.selectDish(dish)
-                    },
-                    onQualityOptionSelected = viewModel::selectQualityOption,
-                    onQuantityChanged = viewModel::setQuantity,
-                    onIncrementQuantity = {
-                        soundManager?.playClickSound()
-                        viewModel.incrementQuantity()
-                    },
-                    onDecrementQuantity = {
-                        soundManager?.playClickSound()
-                        viewModel.decrementQuantity()
-                    },
+                    onDishQuantityChanged = viewModel::setDishQuantity,
+                    onIncrementDishQuantity = viewModel::incrementDishQuantity,
+                    onDecrementDishQuantity = viewModel::decrementDishQuantity,
                     onProceedClicked = {
                         soundManager?.playClickSound()
                         viewModel.proceedToSpin()

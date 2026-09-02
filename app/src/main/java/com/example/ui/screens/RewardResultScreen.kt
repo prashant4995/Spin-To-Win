@@ -52,6 +52,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.audio.LocalFestiveSoundManager
 import com.example.model.Dish
+import com.example.model.OrderItem
 import com.example.model.QualityOption
 import com.example.model.SpinResult
 import com.example.ui.components.ConfettiOverlay
@@ -60,17 +61,6 @@ import com.example.ui.components.DiyaLamp
 import com.example.ui.components.MarigoldGarland
 import com.example.ui.components.PaymentQrCodeCard
 import com.example.ui.theme.AppTheme
-import com.example.ui.theme.ArtisticAmberContainer
-import com.example.ui.theme.ArtisticAmberGlow
-import com.example.ui.theme.ArtisticAmberGold
-import com.example.ui.theme.ArtisticAmberSubtle
-import com.example.ui.theme.ArtisticCream
-import com.example.ui.theme.ArtisticCreamSub
-import com.example.ui.theme.ArtisticMaroonBg
-import com.example.ui.theme.ArtisticMaroonCard
-import com.example.ui.theme.ArtisticMaroonDark
-import com.example.ui.theme.ArtisticMaroonSurface
-import com.example.ui.theme.FestiveCardBorder
 import com.example.ui.theme.GreenSuccess
 
 @Composable
@@ -92,7 +82,7 @@ fun RewardResultScreen(
     val userName = result?.userName ?: "Valued Guest"
     val wonDish = result?.wonDish ?: selectedDish ?: Dish.MODAK
     val finalQuantity = result?.quantity ?: quantity
-    val qualityOption = result?.qualityOption ?: wonDish.defaultQualityOption
+    val orderItems = result?.items ?: emptyList()
 
     LaunchedEffect(result) {
         if (result != null) {
@@ -134,7 +124,7 @@ fun RewardResultScreen(
                     WinContent(
                         userName = userName,
                         dish = wonDish,
-                        qualityOption = qualityOption,
+                        orderItems = orderItems,
                         quantity = finalQuantity,
                         isPaidViaQr = isPaidViaQr || result?.isPaidViaQr == true,
                         onMarkPaidViaQr = onMarkPaidViaQr,
@@ -145,7 +135,7 @@ fun RewardResultScreen(
                     TryAgainContent(
                         userName = userName,
                         dish = wonDish,
-                        qualityOption = qualityOption,
+                        orderItems = orderItems,
                         quantity = finalQuantity,
                         isPaidViaQr = isPaidViaQr || result?.isPaidViaQr == true,
                         isDirectCheckout = result?.isDirectCheckout == true,
@@ -170,7 +160,7 @@ fun RewardResultScreen(
 private fun WinContent(
     userName: String,
     dish: Dish,
-    qualityOption: QualityOption,
+    orderItems: List<OrderItem>,
     quantity: Int,
     isPaidViaQr: Boolean,
     onMarkPaidViaQr: (Int) -> Unit,
@@ -181,10 +171,13 @@ private fun WinContent(
     val soundManager = LocalFestiveSoundManager.current
     val customColors = AppTheme.customColors
 
-    // In a win, 1 item is free. Any extra quantity (> 1) is payable.
-    val extraItems = (quantity - 1).coerceAtLeast(0)
-    val unitPrice = qualityOption.price
-    val payableAmount = extraItems * unitPrice
+    val totalOrderAmt = if (orderItems.isNotEmpty()) {
+        orderItems.sumOf { it.totalPrice }
+    } else {
+        quantity * dish.pricePerUnit
+    }
+    val discount = dish.pricePerUnit
+    val payableAmount = (totalOrderAmt - discount).coerceAtLeast(0)
 
     AnimatedVisibility(
         visible = true,
@@ -247,7 +240,7 @@ private fun WinContent(
                         .height(150.dp)
                 )
 
-                // Dish Title & Win Banner with Quality Tier
+                // Dish Title & Win Banner
                 Surface(
                     shape = RoundedCornerShape(14.dp),
                     color = customColors.surfaceDark,
@@ -261,7 +254,7 @@ private fun WinContent(
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Text(
-                            text = "1x FREE ${qualityOption.name.uppercase()} ${dish.title.uppercase()} (WORTH ₹$unitPrice)",
+                            text = "1x FREE ${dish.title.uppercase()} (WORTH ₹${dish.pricePerUnit})",
                             color = customColors.primaryAccent,
                             fontWeight = FontWeight.Black,
                             fontSize = 14.sp,
@@ -270,7 +263,7 @@ private fun WinContent(
                         )
                         Spacer(modifier = Modifier.height(2.dp))
                         Text(
-                            text = "${qualityOption.badge} ${qualityOption.nativeName} • Authentic Special Prasad",
+                            text = "${dish.nativeTitle} • Authentic Special Prasad Prize",
                             color = customColors.textSecondary,
                             fontSize = 11.5.sp,
                             textAlign = TextAlign.Center
@@ -296,10 +289,10 @@ private fun WinContent(
                         )
                         Spacer(modifier = Modifier.height(2.dp))
                         Text(
-                            text = if (quantity == 1) {
-                                "You won 1 Free ${qualityOption.name} ${dish.title}! Show this screen at the counter to claim your hot prasad."
+                            text = if (payableAmount == 0) {
+                                "You won 1 Free ${dish.title}! Show this screen at the counter to claim your hot prasad."
                             } else {
-                                "You ordered $quantity items: 1 is 100% FREE as your prize, and remaining $extraItems portions (${qualityOption.name}) are ₹$payableAmount total."
+                                "You ordered $quantity items: 1x ${dish.title} is 100% FREE as your prize, remaining total is ₹$payableAmount."
                             },
                             color = customColors.textSecondary,
                             fontSize = 12.sp,
@@ -311,18 +304,18 @@ private fun WinContent(
                 // QR CODE FOR PAYMENT & COUNTER PASS
                 PaymentQrCodeCard(
                     dish = dish,
+                    orderItems = orderItems,
                     quantity = quantity,
                     payableAmount = payableAmount,
                     isPaid = isPaidViaQr,
                     isFreeItem = true,
-                    qualityOption = qualityOption,
                     onMarkAsPaid = {
                         soundManager?.playClaimChime()
                         onMarkPaidViaQr(payableAmount)
                     }
                 )
 
-                // Action Buttons: Claim & Reset + View History
+                // Action Buttons: Done / Complete & View History
                 Column(
                     modifier = Modifier.fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
@@ -413,7 +406,7 @@ private fun WinContent(
 private fun TryAgainContent(
     userName: String,
     dish: Dish,
-    qualityOption: QualityOption,
+    orderItems: List<OrderItem>,
     quantity: Int,
     isPaidViaQr: Boolean,
     isDirectCheckout: Boolean = false,
@@ -426,8 +419,11 @@ private fun TryAgainContent(
     val scrollState = rememberScrollState()
     val soundManager = LocalFestiveSoundManager.current
     val customColors = AppTheme.customColors
-    val unitPrice = qualityOption.price
-    val totalAmount = quantity * unitPrice
+    val totalAmount = if (orderItems.isNotEmpty()) {
+        orderItems.sumOf { it.totalPrice }
+    } else {
+        quantity * dish.pricePerUnit
+    }
 
     Card(
         modifier = Modifier
@@ -494,9 +490,9 @@ private fun TryAgainContent(
 
             Text(
                 text = if (isDirectCheckout) {
-                    "Scan QR code below to complete payment for $quantity portion${if (quantity > 1) "s" else ""} of ${qualityOption.name} ${dish.title} (₹$totalAmount)."
+                    "Scan QR code below to complete payment for $quantity item${if (quantity > 1) "s" else ""} (₹$totalAmount total)."
                 } else {
-                    "Complete payment below via QR to enjoy fresh $quantity portions of ${qualityOption.name} ${dish.title} (₹$totalAmount)."
+                    "Complete payment below via QR to enjoy fresh $quantity item${if (quantity > 1) "s" else ""} (₹$totalAmount total)."
                 },
                 color = customColors.textSecondary,
                 fontSize = 12.5.sp,
@@ -507,11 +503,11 @@ private fun TryAgainContent(
             // QR CODE FOR PAYMENT DIRECTLY AFTER RESULT
             PaymentQrCodeCard(
                 dish = dish,
+                orderItems = orderItems,
                 quantity = quantity,
                 payableAmount = totalAmount,
                 isPaid = isPaidViaQr,
                 isFreeItem = false,
-                qualityOption = qualityOption,
                 onMarkAsPaid = {
                     soundManager?.playClaimChime()
                     onMarkPaidViaQr(totalAmount)
@@ -625,7 +621,7 @@ private fun TryAgainContent(
                         )
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
-                            text = "New Customer / Select Delicacy",
+                            text = "New Customer / Select Delicacies",
                             color = customColors.textPrimary,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.SemiBold

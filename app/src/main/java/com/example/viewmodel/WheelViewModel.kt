@@ -100,47 +100,77 @@ class WheelViewModel(
 
     fun selectDish(dish: Dish) {
         _uiState.update { current ->
-            val currentIndex = current.selectedDish?.qualityOptions?.indexOfFirst { it.id.endsWith(current.selectedQualityOption.id.substringAfter("_", "standard")) } ?: 0
-            val matchingOption = dish.qualityOptions.getOrNull(if (currentIndex >= 0) currentIndex else 0) ?: dish.defaultQualityOption
+            val updatedMap = current.dishQuantities.toMutableMap()
+            if ((updatedMap[dish] ?: 0) == 0) {
+                updatedMap[dish] = 1
+            }
+            val total = updatedMap.values.sum()
             current.copy(
-                selectedDish = dish,
-                selectedQualityOption = matchingOption
+                dishQuantities = updatedMap,
+                quantity = total,
+                selectedDish = dish
             )
         }
     }
 
-    fun selectQualityOption(option: QualityOption) {
+    fun setDishQuantity(dish: Dish, qty: Int) {
+        val safeQty = qty.coerceIn(0, 50)
         _uiState.update { current ->
-            current.copy(selectedQualityOption = option)
+            val updatedMap = current.dishQuantities.toMutableMap()
+            updatedMap[dish] = safeQty
+            val total = updatedMap.values.sum()
+            val primary = updatedMap.filter { it.value > 0 }.keys.firstOrNull() ?: current.selectedDish ?: dish
+            current.copy(
+                dishQuantities = updatedMap,
+                quantity = total,
+                selectedDish = primary
+            )
         }
     }
 
+    fun incrementDishQuantity(dish: Dish) {
+        val currentQty = _uiState.value.dishQuantities[dish] ?: 0
+        setDishQuantity(dish, currentQty + 1)
+    }
+
+    fun decrementDishQuantity(dish: Dish) {
+        val currentQty = _uiState.value.dishQuantities[dish] ?: 0
+        setDishQuantity(dish, currentQty - 1)
+    }
+
     fun setQuantity(qty: Int) {
-        val safeQty = qty.coerceIn(1, 50)
-        _uiState.update { it.copy(quantity = safeQty) }
+        val primary = _uiState.value.primarySelectedDish
+        setDishQuantity(primary, qty)
     }
 
     fun incrementQuantity() {
-        _uiState.update { it.copy(quantity = (it.quantity + 1).coerceAtMost(50)) }
+        val primary = _uiState.value.primarySelectedDish
+        incrementDishQuantity(primary)
     }
 
     fun decrementQuantity() {
-        _uiState.update { it.copy(quantity = (it.quantity - 1).coerceAtLeast(1)) }
+        val primary = _uiState.value.primarySelectedDish
+        decrementDishQuantity(primary)
+    }
+
+    fun selectQualityOption(option: QualityOption) {
+        // Maintained for backward compatibility
+        _uiState.update { it.copy(selectedQualityOption = option) }
     }
 
     fun proceedToSpin() {
         val state = _uiState.value
         val effectiveName = if (state.userName.trim().isEmpty()) "Guest" else state.userName.trim()
-        val effectiveDish = state.selectedDish ?: Dish.KHANDVI
-        val effectiveQuality = state.selectedQualityOption
+        val activeItems = state.activeOrderItems
+        val totalQty = state.totalOrderQuantity
+        val effectiveDish = state.primarySelectedDish
 
-        if (state.quantity > 2) {
+        if (totalQty > 2) {
             // Quantity > 2 unlocks the 3D Lucky Spin
             _uiState.update {
                 it.copy(
                     userName = effectiveName,
                     selectedDish = effectiveDish,
-                    selectedQualityOption = effectiveQuality,
                     nameError = null,
                     currentScreen = AppScreen.SpinWheel
                 )
@@ -150,8 +180,8 @@ class WheelViewModel(
             val directResult = SpinResult(
                 isWin = false,
                 wonDish = null,
-                qualityOption = effectiveQuality,
-                quantity = state.quantity,
+                items = activeItems,
+                quantity = totalQty,
                 userName = effectiveName,
                 isSold = false,
                 amountPaid = 0,
@@ -162,7 +192,6 @@ class WheelViewModel(
                 it.copy(
                     userName = effectiveName,
                     selectedDish = effectiveDish,
-                    selectedQualityOption = effectiveQuality,
                     nameError = null,
                     lastResult = directResult,
                     currentScreen = AppScreen.RewardResult,
@@ -225,42 +254,43 @@ class WheelViewModel(
         val state = _uiState.value
         val sector = state.targetSector ?: state.sectors[0]
         val isWin = sector.type == SectorType.WIN
-        val wonDish = if (isWin) state.selectedDish else null
+        val wonDish = if (isWin) state.primarySelectedDish else null
         val guestName = state.userName.trim().ifEmpty { "Festive Guest" }
-        val currentDish = state.selectedDish
-        val quality = state.selectedQualityOption
+        val activeItems = state.activeOrderItems
 
         val result = SpinResult(
             isWin = isWin,
             wonDish = wonDish,
-            qualityOption = quality,
-            quantity = state.quantity,
+            items = activeItems,
+            quantity = state.totalOrderQuantity,
             userName = guestName,
             isSold = false,
             amountPaid = 0,
             isPaidViaQr = false
         )
 
-        // Persist spin record to Room Database
-        viewModelScope.launch {
-            val entity = SpinHistoryEntity(
-                userName = guestName,
-                isWin = isWin,
-                isSold = false,
-                isFree = isWin,
-                quantity = if (isWin) 1 else state.quantity,
-                unitPrice = quality.price,
-                totalAmount = 0,
-                dishName = (wonDish ?: currentDish)?.title,
-                dishNativeTitle = (wonDish ?: currentDish)?.nativeTitle,
-                dishSubtitle = (wonDish ?: currentDish)?.subtitle,
-                dishEmoji = (wonDish ?: currentDish)?.emoji,
-                qualityName = quality.name,
-                qualityBadge = quality.badge,
-                isPaidViaQr = false,
-                timestamp = System.currentTimeMillis()
-            )
-            repository.insertSpin(entity)
+        // Persist winning free spin record to Room Database
+        if (isWin && wonDish != null) {
+            viewModelScope.launch {
+                val entity = SpinHistoryEntity(
+                    userName = guestName,
+                    isWin = true,
+                    isSold = false,
+                    isFree = true,
+                    quantity = 1,
+                    unitPrice = wonDish.pricePerUnit,
+                    totalAmount = 0,
+                    dishName = wonDish.title,
+                    dishNativeTitle = wonDish.nativeTitle,
+                    dishSubtitle = wonDish.subtitle,
+                    dishEmoji = wonDish.emoji,
+                    qualityName = null,
+                    qualityBadge = null,
+                    isPaidViaQr = false,
+                    timestamp = System.currentTimeMillis()
+                )
+                repository.insertSpin(entity)
+            }
         }
 
         _uiState.update { current ->
@@ -279,41 +309,56 @@ class WheelViewModel(
 
     /**
      * Complete payment via QR Code for sold items.
-     * Records the purchase in Room Database as Sold item with revenue.
+     * Records all purchased delicacies in Room Database as Sold items with revenue.
      */
     fun recordPaymentViaQr(customQty: Int? = null) {
         val state = _uiState.value
         if (state.isPaymentSuccess) return
 
-        val dish = state.selectedDish ?: Dish.MODAK
-        val quality = state.selectedQualityOption
         val isWin = state.lastResult?.isWin == true
-        val paidQty = customQty ?: if (isWin) (state.quantity - 1).coerceAtLeast(0) else state.quantity
-        val totalAmt = quality.price * paidQty
+        val wonDish = state.lastResult?.wonDish
+        val activeItems = state.activeOrderItems
         val guestName = state.userName.trim().ifEmpty { "Festive Customer" }
 
-        if (paidQty > 0) {
-            viewModelScope.launch {
-                val entity = SpinHistoryEntity(
-                    userName = guestName,
-                    isWin = false,
-                    isSold = true,
-                    isFree = false,
-                    quantity = paidQty,
-                    unitPrice = quality.price,
-                    totalAmount = totalAmt,
-                    dishName = dish.title,
-                    dishNativeTitle = dish.nativeTitle,
-                    dishSubtitle = dish.subtitle,
-                    dishEmoji = dish.emoji,
-                    qualityName = quality.name,
-                    qualityBadge = quality.badge,
-                    isPaidViaQr = true,
-                    timestamp = System.currentTimeMillis()
-                )
-                repository.insertSpin(entity)
+        var freeDeducted = !isWin
+        var calculatedPayable = 0
+
+        viewModelScope.launch {
+            activeItems.forEach { item ->
+                val paidQty = if (!freeDeducted && item.dish == wonDish && item.quantity > 0) {
+                    freeDeducted = true
+                    item.quantity - 1
+                } else {
+                    item.quantity
+                }
+
+                if (paidQty > 0) {
+                    val itemTotal = item.unitPrice * paidQty
+                    calculatedPayable += itemTotal
+                    val entity = SpinHistoryEntity(
+                        userName = guestName,
+                        isWin = false,
+                        isSold = true,
+                        isFree = false,
+                        quantity = paidQty,
+                        unitPrice = item.unitPrice,
+                        totalAmount = itemTotal,
+                        dishName = item.dish.title,
+                        dishNativeTitle = item.dish.nativeTitle,
+                        dishSubtitle = item.dish.subtitle,
+                        dishEmoji = item.dish.emoji,
+                        qualityName = null,
+                        qualityBadge = null,
+                        isPaidViaQr = true,
+                        timestamp = System.currentTimeMillis()
+                    )
+                    repository.insertSpin(entity)
+                }
             }
         }
+
+        val wonDishDiscount = if (isWin && wonDish != null) wonDish.pricePerUnit else 0
+        val finalPayable = (state.currentTotalAmount - wonDishDiscount).coerceAtLeast(0)
 
         _uiState.update { current ->
             current.copy(
@@ -321,7 +366,7 @@ class WheelViewModel(
                 showPaymentQrModal = true,
                 lastResult = current.lastResult?.copy(
                     isSold = true,
-                    amountPaid = totalAmt,
+                    amountPaid = finalPayable,
                     isPaidViaQr = true
                 )
             )
@@ -355,34 +400,45 @@ class WheelViewModel(
      */
     fun claimAndReset() {
         val state = _uiState.value
-        val dish = state.selectedDish
-        val quality = state.selectedQualityOption
         val isWin = state.lastResult?.isWin == true
-        val paidQty = if (isWin) (state.quantity - 1).coerceAtLeast(0) else state.quantity
-        val totalAmt = if (dish != null) paidQty * quality.price else 0
+        val wonDish = state.lastResult?.wonDish
+        val activeItems = state.activeOrderItems
         val guestName = state.userName.trim().ifEmpty { "Festive Customer" }
 
         // If payment was not already explicitly recorded, mark and record it as Payment Done now
-        if (!state.isPaymentSuccess && dish != null && paidQty > 0) {
+        if (!state.isPaymentSuccess && activeItems.isNotEmpty()) {
+            var freeDeducted = !isWin
             viewModelScope.launch {
-                val entity = SpinHistoryEntity(
-                    userName = guestName,
-                    isWin = false,
-                    isSold = true,
-                    isFree = false,
-                    quantity = paidQty,
-                    unitPrice = quality.price,
-                    totalAmount = totalAmt,
-                    dishName = dish.title,
-                    dishNativeTitle = dish.nativeTitle,
-                    dishSubtitle = dish.subtitle,
-                    dishEmoji = dish.emoji,
-                    qualityName = quality.name,
-                    qualityBadge = quality.badge,
-                    isPaidViaQr = true,
-                    timestamp = System.currentTimeMillis()
-                )
-                repository.insertSpin(entity)
+                activeItems.forEach { item ->
+                    val paidQty = if (!freeDeducted && item.dish == wonDish && item.quantity > 0) {
+                        freeDeducted = true
+                        item.quantity - 1
+                    } else {
+                        item.quantity
+                    }
+
+                    if (paidQty > 0) {
+                        val itemTotal = item.unitPrice * paidQty
+                        val entity = SpinHistoryEntity(
+                            userName = guestName,
+                            isWin = false,
+                            isSold = true,
+                            isFree = false,
+                            quantity = paidQty,
+                            unitPrice = item.unitPrice,
+                            totalAmount = itemTotal,
+                            dishName = item.dish.title,
+                            dishNativeTitle = item.dish.nativeTitle,
+                            dishSubtitle = item.dish.subtitle,
+                            dishEmoji = item.dish.emoji,
+                            qualityName = null,
+                            qualityBadge = null,
+                            isPaidViaQr = true,
+                            timestamp = System.currentTimeMillis()
+                        )
+                        repository.insertSpin(entity)
+                    }
+                }
             }
         }
 
