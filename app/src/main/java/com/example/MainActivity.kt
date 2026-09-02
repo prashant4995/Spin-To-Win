@@ -299,6 +299,7 @@ fun LuckySpinApp(
                     userName = uiState.userName,
                     nameError = uiState.nameError,
                     selectedDish = uiState.selectedDish,
+                    selectedQualityOption = uiState.selectedQualityOption,
                     quantity = uiState.quantity,
                     canProceed = uiState.canProceedToSpin,
                     onNameChanged = viewModel::updateName,
@@ -306,6 +307,7 @@ fun LuckySpinApp(
                         soundManager?.playClickSound()
                         viewModel.selectDish(dish)
                     },
+                    onQualityOptionSelected = viewModel::selectQualityOption,
                     onQuantityChanged = viewModel::setQuantity,
                     onIncrementQuantity = {
                         soundManager?.playClickSound()

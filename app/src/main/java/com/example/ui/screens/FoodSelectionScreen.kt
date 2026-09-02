@@ -42,6 +42,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Divider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
@@ -359,10 +360,10 @@ fun FoodSelectionScreen(
                     }
                 }
 
-                // Step 2: Dish Selection Section (Modak, Khandvi, Festive Combo)
+                // Step 2: Dish Selection Section with Embedded Quantity Controls (Modak, Khandvi, Festive Combo)
                 Column(
                     modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -371,14 +372,14 @@ fun FoodSelectionScreen(
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = "1. Select Festive Delicacy",
+                                text = "1. Select Delicacy & Quantity",
                                 color = customColors.textPrimary,
                                 fontSize = 17.sp,
                                 fontWeight = FontWeight.ExtraBold
                             )
                             Spacer(modifier = Modifier.height(2.dp))
                             Text(
-                                text = "👇 Choose Modak, Khandvi, or Festive Combo",
+                                text = "👇 Set number of Modak, Khandvi, or Festive Combo",
                                 color = customColors.primaryAccent,
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.SemiBold
@@ -392,7 +393,7 @@ fun FoodSelectionScreen(
                                 modifier = Modifier.padding(start = 6.dp)
                             ) {
                                 Text(
-                                    text = "✓ ${selectedDish.title}",
+                                    text = "✓ ${selectedDish.title} (${quantity}x)",
                                     color = customColors.textOnAccent,
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 11.sp,
@@ -402,7 +403,7 @@ fun FoodSelectionScreen(
                         }
                     }
 
-                    // Delicacy Selection Cards (Modak, Khandvi, Combo Plate)
+                    // Delicacy Selection Cards with embedded quantity controllers (Modak, Khandvi, Combo Plate)
                     Dish.entries.forEach { dish ->
                         val isSelected = selectedDish == dish
                         val currentQualityForDish = if (isSelected) selectedQualityOption else dish.defaultQualityOption
@@ -410,7 +411,28 @@ fun FoodSelectionScreen(
                             dish = dish,
                             isSelected = isSelected,
                             currentQuality = currentQualityForDish,
+                            quantity = if (isSelected) quantity else 1,
                             onSelect = { onDishSelected(dish) },
+                            onQuantityChanged = { newQty ->
+                                onDishSelected(dish)
+                                onQuantityChanged(newQty)
+                            },
+                            onIncrement = {
+                                onDishSelected(dish)
+                                if (isSelected) {
+                                    onIncrementQuantity()
+                                } else {
+                                    onQuantityChanged(2)
+                                }
+                            },
+                            onDecrement = {
+                                onDishSelected(dish)
+                                if (isSelected) {
+                                    onDecrementQuantity()
+                                } else {
+                                    onQuantityChanged(1)
+                                }
+                            },
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .testTag("card_${dish.name.lowercase()}")
@@ -418,7 +440,7 @@ fun FoodSelectionScreen(
                     }
                 }
 
-                // Step 3: Select Quality Option for Modak, Khandvi & Festive combo
+                // Step 2: Select Quality Option for Modak, Khandvi & Festive combo
                 val activeDish = selectedDish ?: Dish.KHANDVI
                 Card(
                     modifier = Modifier
@@ -503,37 +525,45 @@ fun FoodSelectionScreen(
                     }
                 }
 
-                // Step 4: Number of Quantity Selection (Steppers & Presets)
+                // Step 3: Order Total Summary Card (Showing Total & Calculation Only)
                 Surface(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .shadow(8.dp, RoundedCornerShape(20.dp))
-                        .testTag("quantity_selector_card"),
+                        .shadow(10.dp, RoundedCornerShape(20.dp))
+                        .testTag("total_summary_card"),
                     shape = RoundedCornerShape(20.dp),
                     color = customColors.cardBg,
-                    border = BorderStroke(1.dp, customColors.cardBorder)
+                    border = BorderStroke(1.5.dp, customColors.primaryAccent.copy(alpha = 0.8f))
                 ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
+                    Column(modifier = Modifier.padding(18.dp)) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text(
-                                text = "3. Number of Quantity",
-                                color = customColors.textPrimary,
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.Bold
-                            )
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    imageVector = Icons.Default.ShoppingBag,
+                                    contentDescription = "Total",
+                                    tint = customColors.primaryAccent,
+                                    modifier = Modifier.size(22.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = "Order Total",
+                                    color = customColors.textPrimary,
+                                    fontSize = 17.sp,
+                                    fontWeight = FontWeight.ExtraBold
+                                )
+                            }
 
-                            // Price per unit badge according to chosen quality
                             Surface(
                                 shape = RoundedCornerShape(8.dp),
                                 color = customColors.surfaceDark,
-                                border = BorderStroke(1.dp, customColors.cardBorder)
+                                border = BorderStroke(1.dp, customColors.primaryAccent)
                             ) {
                                 Text(
-                                    text = "₹$effectiveUnitPrice / Item",
+                                    text = "${activeDish.title} • $quantity Qty",
                                     color = customColors.primaryAccent,
                                     fontSize = 11.5.sp,
                                     fontWeight = FontWeight.Bold,
@@ -544,152 +574,66 @@ fun FoodSelectionScreen(
 
                         Spacer(modifier = Modifier.height(14.dp))
 
-                        // Interactive Quantity Stepper Row
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            // Minus Button
-                            Surface(
-                                onClick = onDecrementQuantity,
-                                enabled = quantity > 1,
-                                shape = RoundedCornerShape(14.dp),
-                                color = if (quantity > 1) customColors.primaryAccent else customColors.surfaceDark,
-                                border = BorderStroke(1.dp, customColors.cardBorder),
-                                modifier = Modifier
-                                    .size(52.dp)
-                                    .testTag("btn_qty_minus")
-                            ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Icon(
-                                        imageVector = Icons.Default.Remove,
-                                        contentDescription = "Decrease Quantity",
-                                        tint = if (quantity > 1) customColors.textOnAccent else customColors.textSecondary.copy(alpha = 0.4f),
-                                        modifier = Modifier.size(24.dp)
-                                    )
-                                }
-                            }
-
-                            // Quantity Display Box
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text(
-                                    text = "$quantity",
-                                    color = customColors.primaryAccent,
-                                    fontSize = 32.sp,
-                                    fontWeight = FontWeight.Black
-                                )
-                                Text(
-                                    text = if (quantity == 1) "Plate / Piece" else "Plates / Pieces",
-                                    color = customColors.textSecondary,
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Medium
-                                )
-                            }
-
-                            // Plus Button
-                            Surface(
-                                onClick = onIncrementQuantity,
-                                shape = RoundedCornerShape(14.dp),
-                                color = customColors.primaryAccent,
-                                border = BorderStroke(1.dp, customColors.primaryAccent),
-                                modifier = Modifier
-                                    .size(52.dp)
-                                    .testTag("btn_qty_plus")
-                            ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Icon(
-                                        imageVector = Icons.Default.Add,
-                                        contentDescription = "Increase Quantity",
-                                        tint = customColors.textOnAccent,
-                                        modifier = Modifier.size(24.dp)
-                                    )
-                                }
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(14.dp))
-
-                        // Quick Presets: 1, 2, 3, 5, 10
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            listOf(1, 2, 3, 5, 10).forEach { preset ->
-                                val isSelected = quantity == preset
-                                Surface(
-                                    onClick = { onQuantityChanged(preset) },
-                                    shape = RoundedCornerShape(10.dp),
-                                    color = if (isSelected) customColors.primaryAccent else customColors.surfaceDark,
-                                    border = BorderStroke(
-                                        1.dp,
-                                        if (isSelected) customColors.primaryAccent else customColors.cardBorder
-                                    ),
-                                    modifier = Modifier.weight(1f)
-                                ) {
-                                    Text(
-                                        text = "$preset",
-                                        color = if (isSelected) customColors.textOnAccent else customColors.textPrimary,
-                                        fontSize = 13.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        textAlign = TextAlign.Center,
-                                        modifier = Modifier.padding(vertical = 8.dp)
-                                    )
-                                }
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(14.dp))
-
-                        // Live Total Price Calculation Card
+                        // Detailed Calculation Row
                         Surface(
-                            shape = RoundedCornerShape(12.dp),
+                            shape = RoundedCornerShape(14.dp),
                             color = customColors.surfaceDark,
                             border = BorderStroke(1.dp, customColors.cardBorder),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .shadow(4.dp, RoundedCornerShape(12.dp))
+                            modifier = Modifier.fillMaxWidth()
                         ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 14.dp, vertical = 10.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
+                            Column(modifier = Modifier.padding(14.dp)) {
                                 Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    modifier = Modifier.weight(1f)
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Icon(
-                                        imageVector = Icons.Default.ShoppingBag,
-                                        contentDescription = "Price",
-                                        tint = customColors.primaryAccent,
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Column {
+                                    Column(modifier = Modifier.weight(1f)) {
                                         Text(
-                                            text = "Total ($quantity × ₹$effectiveUnitPrice):",
+                                            text = "${activeDish.title} (${activeDish.nativeTitle})",
+                                            color = customColors.textPrimary,
+                                            fontSize = 14.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                        Text(
+                                            text = "${selectedQualityOption.badge} ${selectedQualityOption.name} (₹$effectiveUnitPrice / portion)",
                                             color = customColors.textSecondary,
                                             fontSize = 12.sp,
                                             fontWeight = FontWeight.Medium
                                         )
-                                        Text(
-                                            text = "${selectedQualityOption.badge} ${selectedQualityOption.name}",
-                                            color = customColors.primaryAccent,
-                                            fontSize = 11.sp,
-                                            fontWeight = FontWeight.SemiBold
-                                        )
                                     }
+                                    Text(
+                                        text = "$quantity × ₹$effectiveUnitPrice",
+                                        color = customColors.textPrimary,
+                                        fontSize = 13.5.sp,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
                                 }
 
-                                Text(
-                                    text = "₹$totalPrice",
-                                    color = customColors.primaryAccent,
-                                    fontSize = 19.sp,
-                                    fontWeight = FontWeight.Black
+                                Spacer(modifier = Modifier.height(10.dp))
+                                Divider(
+                                    thickness = 1.dp,
+                                    color = customColors.cardBorder
                                 )
+                                Spacer(modifier = Modifier.height(10.dp))
+
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = "Total Payable Amount",
+                                        color = customColors.textPrimary,
+                                        fontSize = 14.sp,
+                                        fontWeight = FontWeight.ExtraBold
+                                    )
+                                    Text(
+                                        text = "₹$totalPrice",
+                                        color = customColors.primaryAccent,
+                                        fontSize = 22.sp,
+                                        fontWeight = FontWeight.Black
+                                    )
+                                }
                             }
                         }
                     }
@@ -781,7 +725,11 @@ private fun DishCard(
     dish: Dish,
     isSelected: Boolean,
     currentQuality: QualityOption,
+    quantity: Int,
     onSelect: () -> Unit,
+    onQuantityChanged: (Int) -> Unit,
+    onIncrement: () -> Unit,
+    onDecrement: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val customColors = AppTheme.customColors
@@ -796,8 +744,22 @@ private fun DishCard(
         label = "border_width"
     )
 
+    val quantityHeaderTitle = when (dish) {
+        Dish.MODAK -> "Number of Modak"
+        Dish.KHANDVI -> "Number of Khandvi"
+        Dish.COMBO_PLATE -> "Number of Festive Combo"
+    }
+
+    val quantityUnitLabel = when (dish) {
+        Dish.MODAK -> if (quantity == 1) "Piece" else "Pieces"
+        Dish.KHANDVI -> if (quantity == 1) "Plate" else "Plates"
+        Dish.COMBO_PLATE -> if (quantity == 1) "Combo Plate" else "Combo Plates"
+    }
+
+    val displayUnitPrice = if (isSelected) currentQuality.price else dish.pricePerUnit
+    val cardTotalPrice = displayUnitPrice * quantity
+
     Card(
-        onClick = onSelect,
         modifier = modifier
             .shadow(if (isSelected) 14.dp else 6.dp, RoundedCornerShape(20.dp)),
         shape = RoundedCornerShape(20.dp),
@@ -809,9 +771,12 @@ private fun DishCard(
         ),
         border = BorderStroke(borderWidth, borderColor)
     ) {
-        Column(modifier = Modifier.padding(12.dp)) {
+        Column(modifier = Modifier.padding(14.dp)) {
+            // Main Delicacy Info Header (Illustration + Title + Pricing)
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(onClick = onSelect),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 // Dish Illustration Graphic Icon
@@ -854,14 +819,14 @@ private fun DishCard(
 
                         Column(horizontalAlignment = Alignment.End) {
                             // Price Pill showing range or active quality price
-                            val displayPrice = if (isSelected) currentQuality.price else dish.pricePerUnit
                             Surface(
                                 shape = RoundedCornerShape(10.dp),
-                                color = customColors.primaryAccent
+                                color = if (isSelected) customColors.primaryAccent else customColors.surfaceDark,
+                                border = BorderStroke(1.dp, customColors.primaryAccent)
                             ) {
                                 Text(
-                                    text = if (isSelected) "₹$displayPrice" else "From ₹${dish.pricePerUnit}",
-                                    color = customColors.textOnAccent,
+                                    text = "₹$displayUnitPrice",
+                                    color = if (isSelected) customColors.textOnAccent else customColors.primaryAccent,
                                     fontSize = 13.sp,
                                     fontWeight = FontWeight.Black,
                                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
@@ -869,11 +834,151 @@ private fun DishCard(
                             }
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
-                                text = if (isSelected) "✓ ${currentQuality.badge}" else "3 Quality Tiers",
+                                text = if (isSelected) "✓ ${currentQuality.badge}" else "Quality Tiers",
                                 color = if (isSelected) customColors.primaryAccent else customColors.textSecondary,
                                 fontSize = 10.5.sp,
                                 fontWeight = FontWeight.Bold
                             )
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Embedded "Number of <Dish>" Quantity Selector Box
+            Surface(
+                shape = RoundedCornerShape(14.dp),
+                color = customColors.surfaceDark,
+                border = BorderStroke(
+                    1.dp,
+                    if (isSelected) customColors.primaryAccent.copy(alpha = 0.6f) else customColors.cardBorder
+                ),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("qty_section_${dish.name.lowercase()}")
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(12.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = quantityHeaderTitle,
+                                color = if (isSelected) customColors.primaryAccent else customColors.textPrimary,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.ExtraBold
+                            )
+                        }
+
+                        Text(
+                            text = "Total: ₹$cardTotalPrice",
+                            color = customColors.primaryAccent,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Black
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    // Stepper Controls Row (- Button, Count, + Button)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        // Minus Button
+                        Surface(
+                            onClick = onDecrement,
+                            enabled = quantity > 1,
+                            shape = RoundedCornerShape(10.dp),
+                            color = if (quantity > 1) customColors.primaryAccent else customColors.cardBg,
+                            border = BorderStroke(1.dp, customColors.cardBorder),
+                            modifier = Modifier
+                                .size(44.dp)
+                                .testTag("btn_qty_minus_${dish.name.lowercase()}")
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = Icons.Default.Remove,
+                                    contentDescription = "Decrease $quantityHeaderTitle",
+                                    tint = if (quantity > 1) customColors.textOnAccent else customColors.textSecondary.copy(alpha = 0.4f),
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                        }
+
+                        // Quantity Display Center Box
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(
+                                text = "$quantity",
+                                color = customColors.primaryAccent,
+                                fontSize = 24.sp,
+                                fontWeight = FontWeight.Black
+                            )
+                            Text(
+                                text = quantityUnitLabel,
+                                color = customColors.textSecondary,
+                                fontSize = 10.5.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+
+                        // Plus Button
+                        Surface(
+                            onClick = onIncrement,
+                            shape = RoundedCornerShape(10.dp),
+                            color = customColors.primaryAccent,
+                            border = BorderStroke(1.dp, customColors.primaryAccent),
+                            modifier = Modifier
+                                .size(44.dp)
+                                .testTag("btn_qty_plus_${dish.name.lowercase()}")
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = Icons.Default.Add,
+                                    contentDescription = "Increase $quantityHeaderTitle",
+                                    tint = customColors.textOnAccent,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    // Quick Count Presets Row (1, 2, 3, 5, 10)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        listOf(1, 2, 3, 5, 10).forEach { preset ->
+                            val isPresetActive = isSelected && quantity == preset
+                            Surface(
+                                onClick = { onQuantityChanged(preset) },
+                                shape = RoundedCornerShape(8.dp),
+                                color = if (isPresetActive) customColors.primaryAccent else customColors.cardBg,
+                                border = BorderStroke(
+                                    1.dp,
+                                    if (isPresetActive) customColors.primaryAccent else customColors.cardBorder
+                                ),
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text(
+                                    text = "$preset",
+                                    color = if (isPresetActive) customColors.textOnAccent else customColors.textPrimary,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    textAlign = TextAlign.Center,
+                                    modifier = Modifier.padding(vertical = 6.dp)
+                                )
+                            }
                         }
                     }
                 }
@@ -897,12 +1002,16 @@ private fun DishCard(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(vertical = 7.dp, horizontal = 12.dp),
+                        .padding(vertical = 8.dp, horizontal = 12.dp),
                     horizontalArrangement = Arrangement.Center,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = if (isSelected) "✓ SELECTED • ${currentQuality.name} (₹${currentQuality.price})" else "👆 TAP TO SELECT ${dish.title.uppercase()}",
+                        text = if (isSelected) {
+                            "✓ SELECTED • $quantity $quantityUnitLabel • Total ₹$cardTotalPrice"
+                        } else {
+                            "👆 TAP TO SELECT ${dish.title.uppercase()} (₹$displayUnitPrice/item)"
+                        },
                         color = if (isSelected) customColors.textOnAccent else customColors.primaryAccent,
                         fontWeight = FontWeight.Black,
                         fontSize = 12.sp,
