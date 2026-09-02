@@ -16,13 +16,16 @@ data class SpinHistoryEntity(
     val isSold: Boolean = false, // True if item was purchased / sold
     val isFree: Boolean = true,  // True if item was won free via spin
     val quantity: Int = 1,       // Number of items
-    val unitPrice: Int = 30,     // Price per unit in ₹ (e.g. Modak 30 Rs)
+    val unitPrice: Int = 30,     // Price per unit in ₹ (e.g. Modak 40 Rs)
     val totalAmount: Int = 0,    // Total ₹ paid (0 for free items)
     val dishName: String?,
     val dishNativeTitle: String?,
     val dishSubtitle: String?,
     val dishEmoji: String?,
+    val qualityName: String? = null,   // e.g. "Kesar Mawa Premium"
+    val qualityBadge: String? = null,  // e.g. "👑 Premium"
     val isPaidViaQr: Boolean = false,
     val timestamp: Long = System.currentTimeMillis()
 )
+
 

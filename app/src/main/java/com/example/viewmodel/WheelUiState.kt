@@ -5,6 +5,7 @@ import com.example.data.local.SpinHistoryEntity
 import com.example.data.local.ThemeMode
 import com.example.model.AppScreen
 import com.example.model.Dish
+import com.example.model.QualityOption
 import com.example.model.SpinResult
 import com.example.model.WheelSector
 
@@ -18,6 +19,7 @@ data class WheelUiState(
     val userName: String = "",
     val nameError: String? = null,
     val selectedDish: Dish? = Dish.KHANDVI,
+    val selectedQualityOption: QualityOption = Dish.KHANDVI.defaultQualityOption,
     val quantity: Int = 1, // Number of quantity requested (1..20)
     val currentScreen: AppScreen = AppScreen.Registration,
     val previousScreenForHistory: AppScreen = AppScreen.Registration,
@@ -43,8 +45,11 @@ data class WheelUiState(
     val canProceedToSpin: Boolean
         get() = selectedDish != null && quantity >= 1
 
+    val effectiveUnitPrice: Int
+        get() = selectedQualityOption.price
+
     val currentTotalAmount: Int
-        get() = (selectedDish?.pricePerUnit ?: 30) * quantity
+        get() = effectiveUnitPrice * quantity
 
     val filteredHistory: List<SpinHistoryEntity>
         get() = when (historyFilterType) {
@@ -65,3 +70,4 @@ data class WheelUiState(
     val khandviFreeCount: Int
         get() = historyList.filter { (it.isFree || it.isWin) && (it.dishName.equals("Khandvi", ignoreCase = true) || it.dishName.equals("Khandavi", ignoreCase = true) || it.dishName.equals("Kothimbir Vadi", ignoreCase = true)) }.sumOf { it.quantity }
 }
+

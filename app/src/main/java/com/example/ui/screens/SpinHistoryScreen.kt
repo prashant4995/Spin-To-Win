@@ -755,24 +755,35 @@ private fun SpinHistoryCard(
                 Spacer(modifier = Modifier.width(10.dp))
 
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = "${item.quantity}x ${item.dishName ?: "Delicacy"} • ${item.userName}",
-                        color = if (isFree) ArtisticAmberGold else ArtisticCream,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = "${item.quantity}x ${item.dishName ?: "Delicacy"} • ${item.userName}",
+                            color = if (isFree) ArtisticAmberGold else ArtisticCream,
+                            fontSize = 13.5.sp,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        if (!item.qualityName.isNullOrEmpty()) {
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = "• ${item.qualityBadge ?: ""} ${item.qualityName}".trim(),
+                                color = ArtisticAmberGold,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                    }
                     Text(
                         text = if (isFree) {
-                            "Free Lucky Winning Prasad • ₹0 (Worth ₹${item.quantity * item.unitPrice})"
+                            "Free Lucky Winning Prasad (${item.qualityName ?: "Standard"}) • ₹0"
                         } else if (isSold) {
-                            "Paid via UPI QR • ₹${item.totalAmount} (${item.quantity} × ₹${item.unitPrice})"
+                            "Paid via UPI QR • ₹${item.totalAmount} (${item.quantity} × ₹${item.unitPrice} • ${item.qualityName ?: "Standard"})"
                         } else {
-                            "${item.quantity} items requested @ ₹${item.unitPrice} each"
+                            "${item.quantity} items requested @ ₹${item.unitPrice} each (${item.qualityName ?: "Standard"})"
                         },
                         color = ArtisticCreamSub,
-                        fontSize = 11.5.sp
+                        fontSize = 11.sp
                     )
                 }
 

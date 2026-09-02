@@ -13,6 +13,7 @@ import com.example.data.local.ThemePreferences
 import com.example.data.repository.SpinHistoryRepository
 import com.example.model.AppScreen
 import com.example.model.Dish
+import com.example.model.QualityOption
 import com.example.model.SectorType
 import com.example.model.SpinResult
 import com.example.model.WheelSector
@@ -99,7 +100,18 @@ class WheelViewModel(
 
     fun selectDish(dish: Dish) {
         _uiState.update { current ->
-            current.copy(selectedDish = dish)
+            val currentIndex = current.selectedDish?.qualityOptions?.indexOfFirst { it.id.endsWith(current.selectedQualityOption.id.substringAfter("_", "standard")) } ?: 0
+            val matchingOption = dish.qualityOptions.getOrNull(if (currentIndex >= 0) currentIndex else 0) ?: dish.defaultQualityOption
+            current.copy(
+                selectedDish = dish,
+                selectedQualityOption = matchingOption
+            )
+        }
+    }
+
+    fun selectQualityOption(option: QualityOption) {
+        _uiState.update { current ->
+            current.copy(selectedQualityOption = option)
         }
     }
 
@@ -120,6 +132,7 @@ class WheelViewModel(
         val state = _uiState.value
         val effectiveName = if (state.userName.trim().isEmpty()) "Guest" else state.userName.trim()
         val effectiveDish = state.selectedDish ?: Dish.KHANDVI
+        val effectiveQuality = state.selectedQualityOption
 
         if (state.quantity > 2) {
             // Quantity > 2 unlocks the 3D Lucky Spin
@@ -127,6 +140,7 @@ class WheelViewModel(
                 it.copy(
                     userName = effectiveName,
                     selectedDish = effectiveDish,
+                    selectedQualityOption = effectiveQuality,
                     nameError = null,
                     currentScreen = AppScreen.SpinWheel
                 )
@@ -136,6 +150,7 @@ class WheelViewModel(
             val directResult = SpinResult(
                 isWin = false,
                 wonDish = null,
+                qualityOption = effectiveQuality,
                 quantity = state.quantity,
                 userName = effectiveName,
                 isSold = false,
@@ -147,6 +162,7 @@ class WheelViewModel(
                 it.copy(
                     userName = effectiveName,
                     selectedDish = effectiveDish,
+                    selectedQualityOption = effectiveQuality,
                     nameError = null,
                     lastResult = directResult,
                     currentScreen = AppScreen.RewardResult,
@@ -212,10 +228,12 @@ class WheelViewModel(
         val wonDish = if (isWin) state.selectedDish else null
         val guestName = state.userName.trim().ifEmpty { "Festive Guest" }
         val currentDish = state.selectedDish
+        val quality = state.selectedQualityOption
 
         val result = SpinResult(
             isWin = isWin,
             wonDish = wonDish,
+            qualityOption = quality,
             quantity = state.quantity,
             userName = guestName,
             isSold = false,
@@ -231,12 +249,14 @@ class WheelViewModel(
                 isSold = false,
                 isFree = isWin,
                 quantity = if (isWin) 1 else state.quantity,
-                unitPrice = currentDish?.pricePerUnit ?: 30,
+                unitPrice = quality.price,
                 totalAmount = 0,
                 dishName = (wonDish ?: currentDish)?.title,
                 dishNativeTitle = (wonDish ?: currentDish)?.nativeTitle,
                 dishSubtitle = (wonDish ?: currentDish)?.subtitle,
                 dishEmoji = (wonDish ?: currentDish)?.emoji,
+                qualityName = quality.name,
+                qualityBadge = quality.badge,
                 isPaidViaQr = false,
                 timestamp = System.currentTimeMillis()
             )
@@ -266,9 +286,10 @@ class WheelViewModel(
         if (state.isPaymentSuccess) return
 
         val dish = state.selectedDish ?: Dish.MODAK
+        val quality = state.selectedQualityOption
         val isWin = state.lastResult?.isWin == true
         val paidQty = customQty ?: if (isWin) (state.quantity - 1).coerceAtLeast(0) else state.quantity
-        val totalAmt = (dish.pricePerUnit) * paidQty
+        val totalAmt = quality.price * paidQty
         val guestName = state.userName.trim().ifEmpty { "Festive Customer" }
 
         if (paidQty > 0) {
@@ -279,12 +300,14 @@ class WheelViewModel(
                     isSold = true,
                     isFree = false,
                     quantity = paidQty,
-                    unitPrice = dish.pricePerUnit,
+                    unitPrice = quality.price,
                     totalAmount = totalAmt,
                     dishName = dish.title,
                     dishNativeTitle = dish.nativeTitle,
                     dishSubtitle = dish.subtitle,
                     dishEmoji = dish.emoji,
+                    qualityName = quality.name,
+                    qualityBadge = quality.badge,
                     isPaidViaQr = true,
                     timestamp = System.currentTimeMillis()
                 )
@@ -333,9 +356,10 @@ class WheelViewModel(
     fun claimAndReset() {
         val state = _uiState.value
         val dish = state.selectedDish
+        val quality = state.selectedQualityOption
         val isWin = state.lastResult?.isWin == true
         val paidQty = if (isWin) (state.quantity - 1).coerceAtLeast(0) else state.quantity
-        val totalAmt = if (dish != null) paidQty * dish.pricePerUnit else 0
+        val totalAmt = if (dish != null) paidQty * quality.price else 0
         val guestName = state.userName.trim().ifEmpty { "Festive Customer" }
 
         // If payment was not already explicitly recorded, mark and record it as Payment Done now
@@ -347,12 +371,14 @@ class WheelViewModel(
                     isSold = true,
                     isFree = false,
                     quantity = paidQty,
-                    unitPrice = dish.pricePerUnit,
+                    unitPrice = quality.price,
                     totalAmount = totalAmt,
                     dishName = dish.title,
                     dishNativeTitle = dish.nativeTitle,
                     dishSubtitle = dish.subtitle,
                     dishEmoji = dish.emoji,
+                    qualityName = quality.name,
+                    qualityBadge = quality.badge,
                     isPaidViaQr = true,
                     timestamp = System.currentTimeMillis()
                 )
