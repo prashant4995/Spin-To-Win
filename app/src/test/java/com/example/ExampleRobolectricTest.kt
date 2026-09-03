@@ -186,40 +186,40 @@ class ExampleRobolectricTest {
     }
 
     @Test
-    fun `test winning dish logic when user selects only 3 festival combos`() = runBlocking {
+    fun `test spin and win is removed when user selects only festival combos`() = runBlocking {
         val app = ApplicationProvider.getApplicationContext<android.app.Application>()
         val viewModel = WheelViewModel(app)
 
-        // Select ONLY 3 Festival Combos (Modak = 0, Khandvi = 0, Combo = 3)
+        // Select ONLY Festival Combos (e.g., 3 Combos, 0 Modak, 0 Khandvi)
         viewModel.setDishQuantity(Dish.MODAK, 0)
         viewModel.setDishQuantity(Dish.KHANDVI, 0)
         viewModel.setDishQuantity(Dish.COMBO_PLATE, 3)
 
         val state = viewModel.uiState.value
         assertEquals(3, state.totalOrderQuantity)
-        assertTrue(state.isOnlyThreeFestivalCombos)
-        assertEquals(Dish.MODAK, state.winningDishForSpin)
+        assertTrue(state.isOnlyFestivalCombos)
+        // Spin & Win must be disabled/removed for Festival-Combo-only orders
+        assertFalse(state.isLuckySpinUnlocked)
 
-        // Proceed to spin -> selectedDish should be Modak (the winning prize)
+        // Proceed should bypass SpinWheel and go directly to Direct Checkout / RewardResult
         viewModel.proceedToSpin()
-        assertEquals(AppScreen.SpinWheel, viewModel.uiState.value.currentScreen)
-        assertEquals(Dish.MODAK, viewModel.uiState.value.selectedDish)
-
-        // Complete spin animation (sector 0 is WIN)
-        viewModel.onSpinAnimationFinished(0f)
-
-        // Verify result: Won 1 Free Modak!
+        assertEquals(AppScreen.RewardResult, viewModel.uiState.value.currentScreen)
         val lastResult = viewModel.uiState.value.lastResult
         assertNotNull(lastResult)
-        assertTrue(lastResult!!.isWin)
-        assertEquals(Dish.MODAK, lastResult.wonDish)
+        assertTrue(lastResult!!.isDirectCheckout)
+        assertFalse(lastResult.isWin)
 
-        // Verify payment QR calculation:
-        // Ordered 3 Combos @ 55 = 165. Won 1 Free Modak.
-        // Customer pays 165 for combos, and receives 1 free Modak.
-        viewModel.recordPaymentViaQr()
-        assertEquals(165, viewModel.uiState.value.lastResult?.amountPaid)
-        assertTrue(viewModel.uiState.value.isPaymentSuccess)
+        // Order total for 3 Combos @ 55 = 165
+        assertEquals(165, viewModel.uiState.value.currentTotalAmount)
+
+        // Test that orders with non-combo delicacies (e.g. 3 Modaks) still unlock Spin & Win
+        val viewModel2 = WheelViewModel(app)
+        viewModel2.setDishQuantity(Dish.MODAK, 3)
+        viewModel2.setDishQuantity(Dish.KHANDVI, 0)
+        viewModel2.setDishQuantity(Dish.COMBO_PLATE, 0)
+        assertTrue(viewModel2.uiState.value.isLuckySpinUnlocked)
+        viewModel2.proceedToSpin()
+        assertEquals(AppScreen.SpinWheel, viewModel2.uiState.value.currentScreen)
     }
 }
 

@@ -165,8 +165,8 @@ class WheelViewModel(
         val totalQty = state.totalOrderQuantity
         val effectiveDish = state.winningDishForSpin
 
-        if (totalQty > 2) {
-            // Quantity > 2 unlocks the 3D Lucky Spin
+        if (state.isLuckySpinUnlocked) {
+            // Unlocks 3D Lucky Spin (total quantity > 2 and not exclusively Festival Combo)
             _uiState.update {
                 it.copy(
                     userName = effectiveName,
@@ -176,7 +176,7 @@ class WheelViewModel(
                 )
             }
         } else {
-            // Quantity <= 2 proceeds directly to checkout / payment
+            // Quantity <= 2 or exclusively Festival Combo proceeds directly to checkout / payment
             val directResult = SpinResult(
                 isWin = false,
                 wonDish = null,

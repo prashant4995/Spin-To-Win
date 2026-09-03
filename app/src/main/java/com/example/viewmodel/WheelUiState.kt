@@ -63,30 +63,26 @@ data class WheelUiState(
         get() = activeOrderItems.firstOrNull()?.dish ?: selectedDish ?: Dish.MODAK
 
     /**
-     * Checks if the order consists exclusively of 3 Festival Combos (and no other delicacies).
-     */
-    val isOnlyThreeFestivalCombos: Boolean
-        get() = (dishQuantities[Dish.COMBO_PLATE] ?: 0) == 3 &&
-                dishQuantities.filterKeys { it != Dish.COMBO_PLATE }.values.all { it == 0 }
-
-    /**
-     * Checks if the order consists exclusively of Festival Combos (3 or more, qualifying for lucky spin).
+     * Checks if the order consists exclusively of Festival Combos (and no other delicacies).
      */
     val isOnlyFestivalCombos: Boolean
-        get() = (dishQuantities[Dish.COMBO_PLATE] ?: 0) >= 3 &&
+        get() = (dishQuantities[Dish.COMBO_PLATE] ?: 0) > 0 &&
                 dishQuantities.filterKeys { it != Dish.COMBO_PLATE }.values.all { it == 0 }
 
     /**
-     * Winning dish logic:
-     * If the user selects only 3 Festival Combos, provide only 1 Modak for free.
-     * Otherwise, provides the primary selected dish.
+     * Spin & Win is unlocked when total order quantity is > 2, UNLESS the order consists
+     * exclusively of Festival Combos (Festival Combo only orders proceed directly to checkout without Spin & Win).
+     */
+    val isLuckySpinUnlocked: Boolean
+        get() = totalOrderQuantity > 2 && !isOnlyFestivalCombos
+
+    /**
+     * Winning dish logic for eligible lucky spins.
+     * Prefers the individual festival delicacies (Modak / Khandvi) in the order.
      */
     val winningDishForSpin: Dish
-        get() = if (isOnlyThreeFestivalCombos || isOnlyFestivalCombos) {
-            Dish.MODAK
-        } else {
-            primarySelectedDish
-        }
+        get() = activeOrderItems.firstOrNull { it.dish != Dish.COMBO_PLATE }?.dish
+            ?: primarySelectedDish
 
     val effectiveUnitPrice: Int
         get() = primarySelectedDish.pricePerUnit
