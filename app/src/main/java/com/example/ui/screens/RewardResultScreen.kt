@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -186,6 +187,7 @@ private fun WinContent(
     ) {
         Card(
             modifier = Modifier
+                .widthIn(max = 680.dp)
                 .fillMaxWidth()
                 .shadow(20.dp, RoundedCornerShape(26.dp))
                 .testTag("win_result_card"),
@@ -431,6 +433,7 @@ private fun TryAgainContent(
 
     Card(
         modifier = Modifier
+            .widthIn(max = 680.dp)
             .fillMaxWidth()
             .shadow(18.dp, RoundedCornerShape(26.dp))
             .testTag("try_again_card"),

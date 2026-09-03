@@ -11,15 +11,19 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -61,6 +65,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -73,6 +78,7 @@ import com.example.ui.animation.WheelPhysicsEngine
 import com.example.ui.animation.WheelPhysicsState
 import com.example.ui.animation.WheelSpinPhase
 import com.example.ui.components.DishIllustration
+import com.example.ui.components.DiyaLamp
 import com.example.ui.components.LuckyWheel
 import com.example.ui.components.MarigoldGarland
 import com.example.ui.components.ParticleConfetti
@@ -244,7 +250,7 @@ fun SpinWheelScreen(
 
     val customColors = AppTheme.customColors
 
-    Box(
+    BoxWithConstraints(
         modifier = modifier
             .fillMaxSize()
             .background(
@@ -257,6 +263,9 @@ fun SpinWheelScreen(
                 )
             )
     ) {
+        val isTablet = maxWidth >= 720.dp
+        val tabletSideScrollState = rememberScrollState()
+
         Column(modifier = Modifier.fillMaxSize()) {
             // Top Decorative Garland
             MarigoldGarland(
@@ -269,7 +278,7 @@ fun SpinWheelScreen(
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 6.dp)
+                    .padding(horizontal = if (isTablet) 24.dp else 16.dp, vertical = 6.dp)
                     .shadow(8.dp, RoundedCornerShape(18.dp)),
                 shape = RoundedCornerShape(18.dp),
                 color = customColors.cardBg,
@@ -397,196 +406,140 @@ fun SpinWheelScreen(
                 }
             }
 
-            // Main Portrait Content (Scrollable)
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .verticalScroll(scrollState)
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(14.dp)
-            ) {
-                // Real-time Physics Engine Status Pill
-                Surface(
-                    shape = RoundedCornerShape(20.dp),
-                    color = when (physicsState.phase) {
-                        WheelSpinPhase.IDLE -> ArtisticMaroonDark
-                        WheelSpinPhase.ACCELERATION -> Color(0xFF4A1A00)
-                        WheelSpinPhase.DECELERATION -> Color(0xFF3B1010)
-                        WheelSpinPhase.FINAL_LANDING -> Color(0xFF5A3000)
-                        WheelSpinPhase.LANDED -> if (physicsState.isLandedPrizeWin) Color(0xFF422800) else ArtisticMaroonDark
-                    },
-                    border = BorderStroke(
-                        1.2.dp,
-                        when (physicsState.phase) {
-                            WheelSpinPhase.IDLE -> ArtisticAmberSubtle
-                            WheelSpinPhase.ACCELERATION -> Color(0xFFFFB300)
-                            WheelSpinPhase.DECELERATION -> ArtisticAmberGold
-                            WheelSpinPhase.FINAL_LANDING -> Color(0xFFFFD54F)
-                            WheelSpinPhase.LANDED -> if (physicsState.isLandedPrizeWin) ArtisticAmberGold else ArtisticAmberSubtle
-                        }
-                    ),
+            if (isTablet) {
+                // TABLET 2-PANE RESPONSIVE LAYOUT
+                Row(
                     modifier = Modifier
-                        .shadow(6.dp, RoundedCornerShape(20.dp))
-                        .testTag("physics_phase_pill")
+                        .fillMaxSize()
+                        .padding(horizontal = 24.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(24.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    // Left Pane: Large Centered 3D Wheel
+                    Box(
+                        modifier = Modifier
+                            .weight(1.15f)
+                            .fillMaxHeight(),
+                        contentAlignment = Alignment.Center
                     ) {
-                        Icon(
-                            imageVector = when (physicsState.phase) {
-                                WheelSpinPhase.IDLE -> Icons.Default.Casino
-                                WheelSpinPhase.ACCELERATION -> Icons.Default.PlayArrow
-                                WheelSpinPhase.DECELERATION -> Icons.Default.Refresh
-                                WheelSpinPhase.FINAL_LANDING -> Icons.Default.Star
-                                WheelSpinPhase.LANDED -> if (physicsState.isLandedPrizeWin) Icons.Default.Celebration else Icons.Default.Casino
-                            },
-                            contentDescription = "Physics Status",
-                            tint = when (physicsState.phase) {
-                                WheelSpinPhase.IDLE -> ArtisticCreamSub
-                                WheelSpinPhase.ACCELERATION -> Color(0xFFFFB300)
-                                WheelSpinPhase.DECELERATION -> ArtisticAmberGold
-                                WheelSpinPhase.FINAL_LANDING -> Color(0xFFFFD54F)
-                                WheelSpinPhase.LANDED -> if (physicsState.isLandedPrizeWin) Color(0xFFFFD54F) else ArtisticCreamSub
-                            },
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Text(
-                            text = when (physicsState.phase) {
-                                WheelSpinPhase.IDLE -> "READY TO SPIN • 3D PHYSICS"
-                                WheelSpinPhase.ACCELERATION -> "TORQUE BUILDUP • ACCELERATING"
-                                WheelSpinPhase.DECELERATION -> "VISCOUS FRICTION • ${(physicsState.angularVelocityDegPerSec).toInt()}°/s"
-                                WheelSpinPhase.FINAL_LANDING -> "HARMONIC DETENT • LOCKING PRIZE..."
-                                WheelSpinPhase.LANDED -> if (physicsState.isLandedPrizeWin) "JACKPOT LANDED • ${physicsState.landedSector?.primaryLabel ?: "WINNER!"}" else "SPIN COMPLETED • ${physicsState.landedSector?.primaryLabel ?: "TRY AGAIN"}"
-                            },
-                            color = when (physicsState.phase) {
-                                WheelSpinPhase.IDLE -> ArtisticCreamSub
-                                WheelSpinPhase.ACCELERATION -> Color(0xFFFFE082)
-                                WheelSpinPhase.DECELERATION -> ArtisticAmberGold
-                                WheelSpinPhase.FINAL_LANDING -> Color(0xFFFFF9C4)
-                                WheelSpinPhase.LANDED -> if (physicsState.isLandedPrizeWin) Color(0xFFFFF9C4) else ArtisticCream
-                            },
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = 0.6.sp
+                        LuckyWheel(
+                            selectedDish = selectedDish,
+                            sectors = sectors,
+                            currentRotationAngle = physicsState.currentAngle,
+                            isSpinning = isSpinning,
+                            pointerDeflectionAngle = physicsState.pointerDeflectionAngle,
+                            phase = physicsState.phase,
+                            angularVelocity = physicsState.angularVelocityDegPerSec,
+                            landedSectorIndex = physicsState.landedSectorIndex,
+                            landingPulseAlpha = physicsState.landingPulseAlpha,
+                            onSpinClick = triggerSpin,
+                            onSpinComplete = onSpinAnimationFinished,
+                            modifier = Modifier
+                                .fillMaxHeight(0.92f)
+                                .aspectRatio(1f)
                         )
                     }
-                }
 
-                // 3D Lucky Wheel Centerpiece
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(340.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    LuckyWheel(
-                        selectedDish = selectedDish,
-                        sectors = sectors,
-                        currentRotationAngle = physicsState.currentAngle,
-                        isSpinning = isSpinning,
-                        pointerDeflectionAngle = physicsState.pointerDeflectionAngle,
-                        phase = physicsState.phase,
-                        angularVelocity = physicsState.angularVelocityDegPerSec,
-                        landedSectorIndex = physicsState.landedSectorIndex,
-                        landingPulseAlpha = physicsState.landingPulseAlpha,
-                        onSpinClick = triggerSpin,
-                        onSpinComplete = onSpinAnimationFinished,
-                        modifier = Modifier.fillMaxSize()
-                    )
-                }
-
-                // Target Prize Info Card
-                selectedDish?.let { dish ->
-                    Surface(
-                        shape = RoundedCornerShape(16.dp),
-                        color = ArtisticMaroonCard,
-                        border = BorderStroke(1.2.dp, ArtisticAmberGold),
+                    // Right Pane: Physics state, target prize, CTA button, fair-play note
+                    Column(
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .shadow(10.dp, RoundedCornerShape(16.dp))
+                            .weight(1f)
+                            .fillMaxHeight()
+                            .verticalScroll(tabletSideScrollState)
+                            .padding(vertical = 8.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        Row(
-                            modifier = Modifier.padding(12.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                        SpinPhysicsStatusPill(physicsState = physicsState)
+
+                        selectedDish?.let { dish ->
+                            SpinTargetPrizeCard(dish = dish)
+                        }
+
+                        SpinActionButton(
+                            isSpinning = isSpinning,
+                            onClick = triggerSpin
+                        )
+
+                        // Fair Play / Blessing Card for Tablet
+                        Surface(
+                            shape = RoundedCornerShape(14.dp),
+                            color = ArtisticMaroonCard,
+                            border = BorderStroke(1.dp, ArtisticAmberSubtle),
+                            modifier = Modifier.fillMaxWidth()
                         ) {
-                            // Dish Illustration Icon (White background with shadow)
-                            DishIllustration(
-                                dish = dish,
-                                modifier = Modifier.size(68.dp)
-                            )
-
-                            Spacer(modifier = Modifier.width(12.dp))
-
-                            Column(modifier = Modifier.weight(1f)) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 14.dp, vertical = 10.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Center
+                            ) {
+                                DiyaLamp(modifier = Modifier.size(24.dp))
+                                Spacer(modifier = Modifier.width(10.dp))
                                 Text(
-                                    text = "TARGET PRIZE: FREE ${dish.title.uppercase()}",
-                                    color = ArtisticAmberGold,
-                                    fontWeight = FontWeight.ExtraBold,
-                                    fontSize = 13.5.sp
-                                )
-                                Text(
-                                    text = "${dish.nativeTitle} • ${dish.tag}",
-                                    color = ArtisticCream,
-                                    fontSize = 11.5.sp,
-                                    fontWeight = FontWeight.Medium
-                                )
-                                Text(
-                                    text = "Land on either prize sector to win an instant claim ticket!",
+                                    text = "Authentic 3D Physics • Physical friction, torque & harmonic detent locks",
                                     color = ArtisticCreamSub,
-                                    fontSize = 10.5.sp,
-                                    lineHeight = 14.sp
+                                    fontSize = 11.5.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    textAlign = TextAlign.Center
                                 )
+                                Spacer(modifier = Modifier.width(10.dp))
+                                DiyaLamp(modifier = Modifier.size(24.dp))
                             }
                         }
+
+                        Spacer(modifier = Modifier.height(16.dp))
                     }
                 }
-
-                // Big 3D Tactile SPIN CTA Button
-                Button(
-                    onClick = triggerSpin,
-                    enabled = !isSpinning,
+            } else {
+                // PHONE / COMPACT SINGLE-COLUMN LAYOUT (Centered with width constraint)
+                Column(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .height(60.dp)
-                        .shadow(if (!isSpinning) 12.dp else 0.dp, RoundedCornerShape(18.dp))
-                        .testTag("spin_now_button"),
-                    shape = RoundedCornerShape(18.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = customColors.primaryAccent,
-                        contentColor = customColors.textOnAccent,
-                        disabledContainerColor = customColors.primaryAccent.copy(alpha = 0.4f),
-                        disabledContentColor = customColors.textOnAccent.copy(alpha = 0.6f)
-                    ),
-                    elevation = ButtonDefaults.buttonElevation(
-                        defaultElevation = 8.dp,
-                        pressedElevation = 2.dp
-                    )
+                        .fillMaxSize()
+                        .verticalScroll(scrollState)
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                        .widthIn(max = 580.dp)
+                        .align(Alignment.CenterHorizontally),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.Center
+                    SpinPhysicsStatusPill(physicsState = physicsState)
+
+                    // 3D Lucky Wheel Centerpiece
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(340.dp),
+                        contentAlignment = Alignment.Center
                     ) {
-                        Icon(
-                            imageVector = if (isSpinning) Icons.Default.Redo else Icons.Default.Casino,
-                            contentDescription = "Spin",
-                            tint = customColors.textOnAccent,
-                            modifier = Modifier.size(26.dp)
-                        )
-                        Spacer(modifier = Modifier.width(10.dp))
-                        Text(
-                            text = if (isSpinning) "SPINNING 3D WHEEL..." else "SPIN THE 3D WHEEL NOW",
-                            color = customColors.textOnAccent,
-                            fontSize = 15.sp,
-                            fontWeight = FontWeight.Black,
-                            letterSpacing = 1.5.sp
+                        LuckyWheel(
+                            selectedDish = selectedDish,
+                            sectors = sectors,
+                            currentRotationAngle = physicsState.currentAngle,
+                            isSpinning = isSpinning,
+                            pointerDeflectionAngle = physicsState.pointerDeflectionAngle,
+                            phase = physicsState.phase,
+                            angularVelocity = physicsState.angularVelocityDegPerSec,
+                            landedSectorIndex = physicsState.landedSectorIndex,
+                            landingPulseAlpha = physicsState.landingPulseAlpha,
+                            onSpinClick = triggerSpin,
+                            onSpinComplete = onSpinAnimationFinished,
+                            modifier = Modifier.fillMaxSize()
                         )
                     }
-                }
 
-                Spacer(modifier = Modifier.height(16.dp))
+                    selectedDish?.let { dish ->
+                        SpinTargetPrizeCard(dish = dish)
+                    }
+
+                    SpinActionButton(
+                        isSpinning = isSpinning,
+                        onClick = triggerSpin
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+                }
             }
         }
 
@@ -685,6 +638,177 @@ private fun StatPill(
                 color = if (isHighlight) ArtisticCream else ArtisticAmberGold,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.ExtraBold
+            )
+        }
+    }
+}
+
+@Composable
+private fun SpinPhysicsStatusPill(
+    physicsState: WheelPhysicsState,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        shape = RoundedCornerShape(20.dp),
+        color = when (physicsState.phase) {
+            WheelSpinPhase.IDLE -> ArtisticMaroonDark
+            WheelSpinPhase.ACCELERATION -> Color(0xFF4A1A00)
+            WheelSpinPhase.DECELERATION -> Color(0xFF3B1010)
+            WheelSpinPhase.FINAL_LANDING -> Color(0xFF5A3000)
+            WheelSpinPhase.LANDED -> if (physicsState.isLandedPrizeWin) Color(0xFF422800) else ArtisticMaroonDark
+        },
+        border = BorderStroke(
+            1.2.dp,
+            when (physicsState.phase) {
+                WheelSpinPhase.IDLE -> ArtisticAmberSubtle
+                WheelSpinPhase.ACCELERATION -> Color(0xFFFFB300)
+                WheelSpinPhase.DECELERATION -> ArtisticAmberGold
+                WheelSpinPhase.FINAL_LANDING -> Color(0xFFFFD54F)
+                WheelSpinPhase.LANDED -> if (physicsState.isLandedPrizeWin) ArtisticAmberGold else ArtisticAmberSubtle
+            }
+        ),
+        modifier = modifier
+            .shadow(6.dp, RoundedCornerShape(20.dp))
+            .testTag("physics_phase_pill")
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Icon(
+                imageVector = when (physicsState.phase) {
+                    WheelSpinPhase.IDLE -> Icons.Default.Casino
+                    WheelSpinPhase.ACCELERATION -> Icons.Default.PlayArrow
+                    WheelSpinPhase.DECELERATION -> Icons.Default.Refresh
+                    WheelSpinPhase.FINAL_LANDING -> Icons.Default.Star
+                    WheelSpinPhase.LANDED -> if (physicsState.isLandedPrizeWin) Icons.Default.Celebration else Icons.Default.Casino
+                },
+                contentDescription = "Physics Status",
+                tint = when (physicsState.phase) {
+                    WheelSpinPhase.IDLE -> ArtisticCreamSub
+                    WheelSpinPhase.ACCELERATION -> Color(0xFFFFB300)
+                    WheelSpinPhase.DECELERATION -> ArtisticAmberGold
+                    WheelSpinPhase.FINAL_LANDING -> Color(0xFFFFD54F)
+                    WheelSpinPhase.LANDED -> if (physicsState.isLandedPrizeWin) Color(0xFFFFD54F) else ArtisticCreamSub
+                },
+                modifier = Modifier.size(16.dp)
+            )
+            Text(
+                text = when (physicsState.phase) {
+                    WheelSpinPhase.IDLE -> "READY TO SPIN • 3D PHYSICS"
+                    WheelSpinPhase.ACCELERATION -> "TORQUE BUILDUP • ACCELERATING"
+                    WheelSpinPhase.DECELERATION -> "VISCOUS FRICTION • ${(physicsState.angularVelocityDegPerSec).toInt()}°/s"
+                    WheelSpinPhase.FINAL_LANDING -> "HARMONIC DETENT • LOCKING PRIZE..."
+                    WheelSpinPhase.LANDED -> if (physicsState.isLandedPrizeWin) "JACKPOT LANDED • ${physicsState.landedSector?.primaryLabel ?: "WINNER!"}" else "SPIN COMPLETED • ${physicsState.landedSector?.primaryLabel ?: "TRY AGAIN"}"
+                },
+                color = when (physicsState.phase) {
+                    WheelSpinPhase.IDLE -> ArtisticCreamSub
+                    WheelSpinPhase.ACCELERATION -> Color(0xFFFFE082)
+                    WheelSpinPhase.DECELERATION -> ArtisticAmberGold
+                    WheelSpinPhase.FINAL_LANDING -> Color(0xFFFFF9C4)
+                    WheelSpinPhase.LANDED -> if (physicsState.isLandedPrizeWin) Color(0xFFFFF9C4) else ArtisticCream
+                },
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 0.6.sp
+            )
+        }
+    }
+}
+
+@Composable
+private fun SpinTargetPrizeCard(
+    dish: Dish,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        shape = RoundedCornerShape(16.dp),
+        color = ArtisticMaroonCard,
+        border = BorderStroke(1.2.dp, ArtisticAmberGold),
+        modifier = modifier
+            .fillMaxWidth()
+            .shadow(10.dp, RoundedCornerShape(16.dp))
+    ) {
+        Row(
+            modifier = Modifier.padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            DishIllustration(
+                dish = dish,
+                modifier = Modifier.size(68.dp)
+            )
+
+            Spacer(modifier = Modifier.width(12.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "TARGET PRIZE: FREE ${dish.title.uppercase()}",
+                    color = ArtisticAmberGold,
+                    fontWeight = FontWeight.ExtraBold,
+                    fontSize = 13.5.sp
+                )
+                Text(
+                    text = "${dish.nativeTitle} • ${dish.tag}",
+                    color = ArtisticCream,
+                    fontSize = 11.5.sp,
+                    fontWeight = FontWeight.Medium
+                )
+                Text(
+                    text = "Land on either prize sector to win an instant claim ticket!",
+                    color = ArtisticCreamSub,
+                    fontSize = 10.5.sp,
+                    lineHeight = 14.sp
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SpinActionButton(
+    isSpinning: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val customColors = AppTheme.customColors
+    Button(
+        onClick = onClick,
+        enabled = !isSpinning,
+        modifier = modifier
+            .fillMaxWidth()
+            .height(60.dp)
+            .shadow(if (!isSpinning) 12.dp else 0.dp, RoundedCornerShape(18.dp))
+            .testTag("spin_now_button"),
+        shape = RoundedCornerShape(18.dp),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = customColors.primaryAccent,
+            contentColor = customColors.textOnAccent,
+            disabledContainerColor = customColors.primaryAccent.copy(alpha = 0.4f),
+            disabledContentColor = customColors.textOnAccent.copy(alpha = 0.6f)
+        ),
+        elevation = ButtonDefaults.buttonElevation(
+            defaultElevation = 8.dp,
+            pressedElevation = 2.dp
+        )
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center
+        ) {
+            Icon(
+                imageVector = if (isSpinning) Icons.Default.Redo else Icons.Default.Casino,
+                contentDescription = "Spin",
+                tint = customColors.textOnAccent,
+                modifier = Modifier.size(26.dp)
+            )
+            Spacer(modifier = Modifier.width(10.dp))
+            Text(
+                text = if (isSpinning) "SPINNING 3D WHEEL..." else "SPIN THE 3D WHEEL NOW",
+                color = customColors.textOnAccent,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Black,
+                letterSpacing = 1.5.sp
             )
         }
     }
