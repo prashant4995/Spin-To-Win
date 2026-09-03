@@ -176,7 +176,8 @@ private fun WinContent(
     } else {
         quantity * dish.pricePerUnit
     }
-    val discount = dish.pricePerUnit
+    val isWonDishInOrder = orderItems.isEmpty() || orderItems.any { it.dish == dish }
+    val discount = if (isWonDishInOrder) dish.pricePerUnit else 0
     val payableAmount = (totalOrderAmt - discount).coerceAtLeast(0)
 
     AnimatedVisibility(
@@ -289,10 +290,13 @@ private fun WinContent(
                         )
                         Spacer(modifier = Modifier.height(2.dp))
                         Text(
-                            text = if (payableAmount == 0) {
-                                "You won 1 Free ${dish.title}! Show this screen at the counter to claim your hot prasad."
-                            } else {
-                                "You ordered $quantity items: 1x ${dish.title} is 100% FREE as your prize, remaining total is ₹$payableAmount."
+                            text = when {
+                                payableAmount == 0 ->
+                                    "You won 1 Free ${dish.title}! Show this screen at the counter to claim your hot prasad."
+                                !isWonDishInOrder ->
+                                    "You ordered $quantity items and won 1 Free ${dish.title}! Show this screen at the counter to claim your free ${dish.title} prasad. Total order payable is ₹$payableAmount."
+                                else ->
+                                    "You ordered $quantity items: 1x ${dish.title} is 100% FREE as your prize, remaining total is ₹$payableAmount."
                             },
                             color = customColors.textSecondary,
                             fontSize = 12.sp,

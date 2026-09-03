@@ -582,8 +582,14 @@ fun FoodSelectionScreen(
                                 .background(if (isLuckySpinUnlocked) GreenSuccess else if (totalQuantity > 0) customColors.primaryAccent else customColors.textSecondary)
                         )
                         Spacer(modifier = Modifier.width(10.dp))
+                        val isOnlyThreeCombos = (dishQuantities[Dish.COMBO_PLATE] ?: 0) == 3 &&
+                                dishQuantities.filterKeys { it != Dish.COMBO_PLATE }.values.all { it == 0 }
+                        val isOnlyCombos = (dishQuantities[Dish.COMBO_PLATE] ?: 0) >= 3 &&
+                                dishQuantities.filterKeys { it != Dish.COMBO_PLATE }.values.all { it == 0 }
+
                         Text(
                             text = when {
+                                isOnlyThreeCombos || isOnlyCombos -> "🎉 3D Lucky Spin Unlocked! (Special Offer: Spin to win 1 Free Modak!)"
                                 totalQuantity > 2 -> "🎉 3D Lucky Spin Unlocked! ($totalQuantity items qualify for free spin prize)"
                                 totalQuantity in 1..2 -> "💳 Direct Checkout (Add ${3 - totalQuantity} more item${if (3 - totalQuantity > 1) "s" else ""} to unlock 3D Lucky Spin!)"
                                 else -> "👆 Set quantities above to add items to your festive order"
@@ -742,6 +748,16 @@ private fun MultiDishCard(
                                 fontSize = 13.sp,
                                 maxLines = 1
                             )
+                            if (dish == Dish.COMBO_PLATE) {
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(
+                                    text = "✨ 3 Combos = Win 1 Free Modak!",
+                                    color = customColors.primaryAccent,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 10.5.sp,
+                                    maxLines = 1
+                                )
+                            }
                         }
 
                         Spacer(modifier = Modifier.width(8.dp))

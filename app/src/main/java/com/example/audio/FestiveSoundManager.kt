@@ -2,7 +2,9 @@ package com.example.audio
 
 import android.content.Context
 import android.media.AudioAttributes
-import android.media.SoundPool
+import android.media.AudioFormat
+import android.media.AudioTrack
+import android.media.PlaybackParams
 import android.speech.tts.TextToSpeech
 import android.util.Log
 import androidx.compose.runtime.staticCompositionLocalOf
@@ -12,10 +14,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import java.io.File
-import java.io.FileOutputStream
-import java.nio.ByteBuffer
-import java.nio.ByteOrder
 import java.util.Locale
 import kotlin.math.PI
 import kotlin.math.exp
@@ -51,44 +49,50 @@ interface SoundEffectManager {
     fun playCelebrationSound()
 
     /**
-     * Plays golden celebratory win chimes.
+     * Plays the golden win chime effect with harmonic resonance.
      */
     fun playWinChime()
 
     /**
-     * Plays reward claim fanfare.
+     * Plays the reward claim celebration chime.
      */
     fun playClaimChime()
 
     /**
-     * Plays encouraging try again tone.
+     * Plays an encouraging try-again melodic tone.
      */
     fun playTryAgainSound()
 
     /**
-     * Plays tactile UI click sound.
+     * Plays a tactile click for button presses and card taps.
      */
     fun playClickSound()
 
     /**
      * Announces winner with TTS.
      */
-    fun announceWinner(userName: String, prizeName: String = "")
+    fun announceWinner(userName: String, prizeName: String)
+
+    /**
+     * Speaks arbitrary announcement text.
+     */
     fun speakText(text: String)
+
+    /**
+     * Stops any ongoing TTS announcement.
+     */
     fun stopAnnouncement()
+
+    /**
+     * Releases audio and synthesizer resources.
+     */
     fun release()
 }
 
 /**
- * High-performance SoundPool audio manager tailored for the Ganesh Utsav Lucky Spin app.
- * Provides synthesized festive sound effects:
- * - Dynamic clicking sound during wheel rotation
- * - Glorious celebratory fanfare and golden chimes when a prize is won
- * - Decelerating wheel spinning whirl and ratchet ticks
- * - Festive reward claim fanfare
- * - Encouraging try-again tones
- * - Tactile UI interaction clicks
- * - TextToSpeech announcer for declaring winner names out loud
+ * High-performance, direct in-memory AudioTrack manager tailored for the Ganesh Utsav Lucky Spin app.
+ * Generates raw PCM audio in memory and plays it directly via AudioTrack static buffers,
+ * bypassing file I/O and media decoders completely for zero-latency, artifact-free audio.
  */
 class FestiveSoundManager private constructor(private val context: Context) : SoundEffectManager, TextToSpeech.OnInitListener {
 
@@ -97,23 +101,112 @@ class FestiveSoundManager private constructor(private val context: Context) : So
     private val _isMuted = MutableStateFlow(false)
     override val isMuted: StateFlow<Boolean> = _isMuted.asStateFlow()
 
-    private var soundPool: SoundPool? = null
+    @Volatile private var spinTrack: AudioTrack? = null
+    private val pegClickTracks = ArrayList<AudioTrack>()
+    @Volatile private var pegClickIndex = 0
+
+    private val clickTracks = ArrayList<AudioTrack>()
+    @Volatile private var clickIndex = 0
+
+    @Volatile private var celebrationTrack: AudioTrack? = null
+    @Volatile private var claimTrack: AudioTrack? = null
+    @Volatile private var tryAgainTrack: AudioTrack? = null
+
     private var textToSpeech: TextToSpeech? = null
     private var isTtsReady: Boolean = false
 
-    private var spinSoundId: Int = 0
-    private var wheelClickSoundId: Int = 0
-    private var celebrationSoundId: Int = 0
-    private var winChimeSoundId: Int = 0
-    private var claimChimeSoundId: Int = 0
-    private var tryAgainSoundId: Int = 0
-    private var clickSoundId: Int = 0
-
-    private val loadedSoundIds = mutableSetOf<Int>()
-    private var activeSpinStreamId: Int = 0
-
     init {
-        initializeSoundPool()
+        initializeAudioTracks()
+    }
+
+    private fun initializeAudioTracks() {
+        scope.launch {
+            try {
+                // 1. Wheel Spin Track (4.6s decelerating ratchet + whirl)
+                val spinPcm = synthesizeSpinSound()
+                spinTrack = buildStaticAudioTrack(spinPcm)
+
+                // 2. Wheel Peg Click (pool of 4 tracks for rapid overlapping ticks)
+                val pegPcm = synthesizeWheelPegClick()
+                repeat(4) {
+                    buildStaticAudioTrack(pegPcm)?.let { pegClickTracks.add(it) }
+                }
+
+                // 3. Tactile UI Click (pool of 2 tracks)
+                val clickPcm = synthesizeClickSound()
+                repeat(2) {
+                    buildStaticAudioTrack(clickPcm)?.let { clickTracks.add(it) }
+                }
+
+                // 4. Grand Celebration Win Fanfare
+                val celebPcm = synthesizeCelebrationSound()
+                celebrationTrack = buildStaticAudioTrack(celebPcm)
+
+                // 5. Reward Claim Fanfare
+                val claimPcm = synthesizeClaimFanfare()
+                claimTrack = buildStaticAudioTrack(claimPcm)
+
+                // 6. Encouraging Try Again Tone
+                val tryAgainPcm = synthesizeTryAgainTone()
+                tryAgainTrack = buildStaticAudioTrack(tryAgainPcm)
+            } catch (e: Throwable) {
+                Log.w("FestiveSoundManager", "Error initializing AudioTracks", e)
+            }
+        }
+    }
+
+    private fun buildStaticAudioTrack(pcm: ShortArray, sampleRate: Int = 44100): AudioTrack? {
+        return try {
+            val audioAttributes = AudioAttributes.Builder()
+                .setUsage(AudioAttributes.USAGE_GAME)
+                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                .build()
+
+            val audioFormat = AudioFormat.Builder()
+                .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
+                .setSampleRate(sampleRate)
+                .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
+                .build()
+
+            val track = AudioTrack.Builder()
+                .setAudioAttributes(audioAttributes)
+                .setAudioFormat(audioFormat)
+                .setBufferSizeInBytes(pcm.size * 2)
+                .setTransferMode(AudioTrack.MODE_STATIC)
+                .build()
+
+            val written = track.write(pcm, 0, pcm.size)
+            if (written > 0) {
+                track
+            } else {
+                track.release()
+                null
+            }
+        } catch (e: Throwable) {
+            Log.w("FestiveSoundManager", "Error building AudioTrack", e)
+            null
+        }
+    }
+
+    private fun playStatic(track: AudioTrack?, volume: Float = 1.0f, pitch: Float = 1.0f) {
+        if (track == null || _isMuted.value) return
+        try {
+            if (track.state != AudioTrack.STATE_INITIALIZED) return
+            if (track.playState == AudioTrack.PLAYSTATE_PLAYING) {
+                track.stop()
+            }
+            track.reloadStaticData()
+            track.setVolume(volume.coerceIn(0.0f, 1.0f))
+            if (pitch != 1.0f) {
+                track.playbackParams = PlaybackParams().apply {
+                    this.pitch = pitch.coerceIn(0.5f, 2.0f)
+                    this.speed = 1.0f
+                }
+            }
+            track.play()
+        } catch (e: Throwable) {
+            // Non-critical playback frame
+        }
     }
 
     private fun initializeTts() {
@@ -143,99 +236,6 @@ class FestiveSoundManager private constructor(private val context: Context) : So
         }
     }
 
-    private fun initializeSoundPool() {
-        try {
-            val audioAttributes = AudioAttributes.Builder()
-                .setUsage(AudioAttributes.USAGE_GAME)
-                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                .build()
-
-            soundPool = SoundPool.Builder()
-                .setMaxStreams(8)
-                .setAudioAttributes(audioAttributes)
-                .build().apply {
-                    setOnLoadCompleteListener { _, sampleId, status ->
-                        if (status == 0) {
-                            synchronized(loadedSoundIds) {
-                                loadedSoundIds.add(sampleId)
-                            }
-                        }
-                    }
-                }
-
-            scope.launch {
-                generateAndLoadSounds()
-            }
-        } catch (e: Exception) {
-            Log.w("FestiveSoundManager", "Error initializing SoundPool", e)
-        }
-    }
-
-    private fun generateAndLoadSounds() {
-        try {
-            val cacheDir = context.cacheDir
-
-            // 1. Wheel Spin Sound Track (4.6s decelerating)
-            val spinFile = File(cacheDir, "festive_spin_4600ms.wav")
-            if (!spinFile.exists() || spinFile.length() < 1000) {
-                val spinBytes = synthesizeSpinSound()
-                FileOutputStream(spinFile).use { it.write(spinBytes) }
-            }
-            soundPool?.let { spinSoundId = it.load(spinFile.absolutePath, 1) }
-
-            // 2. Wheel Dynamic Peg Click (Crisp physical collision during rotation)
-            val wheelClickFile = File(cacheDir, "wheel_peg_click.wav")
-            if (!wheelClickFile.exists() || wheelClickFile.length() < 500) {
-                val clickBytes = synthesizeWheelPegClick()
-                FileOutputStream(wheelClickFile).use { it.write(clickBytes) }
-            }
-            soundPool?.let { wheelClickSoundId = it.load(wheelClickFile.absolutePath, 1) }
-
-            // 3. Grand Celebration Sound (Prize Won Fanfare + Shimmering Bells)
-            val celebFile = File(cacheDir, "festive_celebration_win.wav")
-            if (!celebFile.exists() || celebFile.length() < 1000) {
-                val celebBytes = synthesizeCelebrationSound()
-                FileOutputStream(celebFile).use { it.write(celebBytes) }
-            }
-            soundPool?.let { celebrationSoundId = it.load(celebFile.absolutePath, 1) }
-
-            // 4. Win Celebratory Chime
-            val winFile = File(cacheDir, "festive_win_chime.wav")
-            if (!winFile.exists() || winFile.length() < 1000) {
-                val winBytes = synthesizeWinChime()
-                FileOutputStream(winFile).use { it.write(winBytes) }
-            }
-            soundPool?.let { winChimeSoundId = it.load(winFile.absolutePath, 1) }
-
-            // 5. Reward Claim Fanfare
-            val claimFile = File(cacheDir, "festive_claim_fanfare.wav")
-            if (!claimFile.exists() || claimFile.length() < 1000) {
-                val claimBytes = synthesizeClaimFanfare()
-                FileOutputStream(claimFile).use { it.write(claimBytes) }
-            }
-            soundPool?.let { claimChimeSoundId = it.load(claimFile.absolutePath, 1) }
-
-            // 6. Try Again Tone
-            val tryAgainFile = File(cacheDir, "festive_try_again.wav")
-            if (!tryAgainFile.exists() || tryAgainFile.length() < 1000) {
-                val tryAgainBytes = synthesizeTryAgainTone()
-                FileOutputStream(tryAgainFile).use { it.write(tryAgainBytes) }
-            }
-            soundPool?.let { tryAgainSoundId = it.load(tryAgainFile.absolutePath, 1) }
-
-            // 7. Tactile UI Click
-            val clickFile = File(cacheDir, "festive_click.wav")
-            if (!clickFile.exists() || clickFile.length() < 1000) {
-                val clickBytes = synthesizeClickSound()
-                FileOutputStream(clickFile).use { it.write(clickBytes) }
-            }
-            soundPool?.let { clickSoundId = it.load(clickFile.absolutePath, 1) }
-
-        } catch (e: Exception) {
-            Log.w("FestiveSoundManager", "Error generating audio cache", e)
-        }
-    }
-
     override fun toggleMute(): Boolean {
         val newMuted = !_isMuted.value
         _isMuted.value = newMuted
@@ -252,27 +252,13 @@ class FestiveSoundManager private constructor(private val context: Context) : So
         }
     }
 
-    private fun isSoundLoaded(soundId: Int): Boolean {
-        if (soundId == 0) return false
-        return synchronized(loadedSoundIds) {
-            loadedSoundIds.contains(soundId)
-        }
-    }
-
     /**
      * Plays the festive wheel spinning sound (4.6-second decelerating ratchet ticking + whirl).
      */
     override fun playSpinSound() {
         if (_isMuted.value) return
         stopSpinSound()
-        try {
-            val sp = soundPool ?: return
-            if (isSoundLoaded(spinSoundId)) {
-                activeSpinStreamId = sp.play(spinSoundId, 0.95f, 0.95f, 2, 0, 1.0f)
-            }
-        } catch (e: Exception) {
-            Log.w("FestiveSoundManager", "Error playing spin sound", e)
-        }
+        playStatic(spinTrack, volume = 0.95f)
     }
 
     /**
@@ -280,11 +266,12 @@ class FestiveSoundManager private constructor(private val context: Context) : So
      */
     override fun stopSpinSound() {
         try {
-            if (activeSpinStreamId != 0) {
-                soundPool?.stop(activeSpinStreamId)
-                activeSpinStreamId = 0
+            spinTrack?.let {
+                if (it.state == AudioTrack.STATE_INITIALIZED && it.playState == AudioTrack.PLAYSTATE_PLAYING) {
+                    it.stop()
+                }
             }
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             Log.w("FestiveSoundManager", "Error stopping spin sound", e)
         }
     }
@@ -294,16 +281,12 @@ class FestiveSoundManager private constructor(private val context: Context) : So
      */
     override fun playWheelClick(velocityFactor: Float) {
         if (_isMuted.value) return
-        try {
-            val sp = soundPool ?: return
-            val soundId = if (isSoundLoaded(wheelClickSoundId)) wheelClickSoundId else if (isSoundLoaded(clickSoundId)) clickSoundId else 0
-            if (soundId != 0) {
-                val pitch = (0.90f + velocityFactor * 0.25f).coerceIn(0.7f, 1.6f)
-                val volume = (0.55f + velocityFactor * 0.25f).coerceIn(0.3f, 0.95f)
-                sp.play(soundId, volume, volume, 1, 0, pitch)
-            }
-        } catch (e: Exception) {
-            // Non-critical frame tick
+        val pitch = (0.90f + velocityFactor * 0.25f).coerceIn(0.7f, 1.6f)
+        val volume = (0.55f + velocityFactor * 0.25f).coerceIn(0.3f, 0.95f)
+        val tracks = pegClickTracks
+        if (tracks.isNotEmpty()) {
+            val idx = Math.floorMod(pegClickIndex++, tracks.size)
+            playStatic(tracks.getOrNull(idx), volume = volume, pitch = pitch)
         }
     }
 
@@ -312,16 +295,12 @@ class FestiveSoundManager private constructor(private val context: Context) : So
      */
     override fun playRatchetTick(pitch: Float, volume: Float) {
         if (_isMuted.value) return
-        try {
-            val sp = soundPool ?: return
-            val soundId = if (isSoundLoaded(wheelClickSoundId)) wheelClickSoundId else if (isSoundLoaded(clickSoundId)) clickSoundId else 0
-            if (soundId != 0) {
-                val clampedPitch = pitch.coerceIn(0.6f, 1.8f)
-                val clampedVol = volume.coerceIn(0.1f, 0.9f)
-                sp.play(soundId, clampedVol, clampedVol, 1, 0, clampedPitch)
-            }
-        } catch (e: Exception) {
-            // Non-critical sound tick
+        val clampedPitch = pitch.coerceIn(0.6f, 1.8f)
+        val clampedVol = volume.coerceIn(0.1f, 0.9f)
+        val tracks = pegClickTracks
+        if (tracks.isNotEmpty()) {
+            val idx = Math.floorMod(pegClickIndex++, tracks.size)
+            playStatic(tracks.getOrNull(idx), volume = clampedVol, pitch = clampedPitch)
         }
     }
 
@@ -330,15 +309,7 @@ class FestiveSoundManager private constructor(private val context: Context) : So
      */
     override fun playCelebrationSound() {
         if (_isMuted.value) return
-        try {
-            val sp = soundPool ?: return
-            val soundId = if (isSoundLoaded(celebrationSoundId)) celebrationSoundId else if (isSoundLoaded(winChimeSoundId)) winChimeSoundId else 0
-            if (soundId != 0) {
-                sp.play(soundId, 1.0f, 1.0f, 3, 0, 1.0f)
-            }
-        } catch (e: Exception) {
-            Log.w("FestiveSoundManager", "Error playing celebration sound", e)
-        }
+        playStatic(celebrationTrack, volume = 1.0f)
     }
 
     /**
@@ -353,14 +324,7 @@ class FestiveSoundManager private constructor(private val context: Context) : So
      */
     override fun playClaimChime() {
         if (_isMuted.value) return
-        try {
-            val sp = soundPool ?: return
-            if (isSoundLoaded(claimChimeSoundId)) {
-                sp.play(claimChimeSoundId, 1.0f, 1.0f, 3, 0, 1.0f)
-            }
-        } catch (e: Exception) {
-            Log.w("FestiveSoundManager", "Error playing claim chime", e)
-        }
+        playStatic(claimTrack, volume = 1.0f)
     }
 
     /**
@@ -368,14 +332,7 @@ class FestiveSoundManager private constructor(private val context: Context) : So
      */
     override fun playTryAgainSound() {
         if (_isMuted.value) return
-        try {
-            val sp = soundPool ?: return
-            if (isSoundLoaded(tryAgainSoundId)) {
-                sp.play(tryAgainSoundId, 0.8f, 0.8f, 1, 0, 1.0f)
-            }
-        } catch (e: Exception) {
-            Log.w("FestiveSoundManager", "Error playing try again tone", e)
-        }
+        playStatic(tryAgainTrack, volume = 0.85f)
     }
 
     /**
@@ -383,13 +340,10 @@ class FestiveSoundManager private constructor(private val context: Context) : So
      */
     override fun playClickSound() {
         if (_isMuted.value) return
-        try {
-            val sp = soundPool ?: return
-            if (isSoundLoaded(clickSoundId)) {
-                sp.play(clickSoundId, 0.6f, 0.6f, 1, 0, 1.0f)
-            }
-        } catch (e: Exception) {
-            Log.w("FestiveSoundManager", "Error playing click sound", e)
+        val tracks = clickTracks
+        if (tracks.isNotEmpty()) {
+            val idx = Math.floorMod(clickIndex++, tracks.size)
+            playStatic(tracks.getOrNull(idx), volume = 0.65f)
         }
     }
 
@@ -447,14 +401,46 @@ class FestiveSoundManager private constructor(private val context: Context) : So
 
     override fun release() {
         try {
-            stopSpinSound()
-            stopAnnouncement()
+            spinTrack?.let {
+                it.stop()
+                it.release()
+            }
+            spinTrack = null
+
+            pegClickTracks.forEach {
+                try { it.stop(); it.release() } catch (_: Throwable) {}
+            }
+            pegClickTracks.clear()
+
+            clickTracks.forEach {
+                try { it.stop(); it.release() } catch (_: Throwable) {}
+            }
+            clickTracks.clear()
+
+            celebrationTrack?.let {
+                it.stop()
+                it.release()
+            }
+            celebrationTrack = null
+
+            claimTrack?.let {
+                it.stop()
+                it.release()
+            }
+            claimTrack = null
+
+            tryAgainTrack?.let {
+                it.stop()
+                it.release()
+            }
+            tryAgainTrack = null
+
+            textToSpeech?.stop()
             textToSpeech?.shutdown()
             textToSpeech = null
-            soundPool?.release()
-            soundPool = null
+            isTtsReady = false
         } catch (e: Exception) {
-            Log.w("FestiveSoundManager", "Error releasing SoundPool/TTS", e)
+            Log.w("FestiveSoundManager", "Error releasing AudioTracks/TTS", e)
         }
     }
 
@@ -470,13 +456,13 @@ class FestiveSoundManager private constructor(private val context: Context) : So
     }
 
     // ==========================================
-    // PROCEDURAL AUDIO SYNTHESIS ENGINES
+    // PROCEDURAL AUDIO SYNTHESIS ENGINES (PCM)
     // ==========================================
 
     /**
      * Synthesizes a crisp, acoustic wheel peg click sound (25ms duration).
      */
-    private fun synthesizeWheelPegClick(sampleRate: Int = 44100): ByteArray {
+    private fun synthesizeWheelPegClick(sampleRate: Int = 44100): ShortArray {
         val durationSec = 0.025f // 25ms crisp peg collision
         val totalSamples = (sampleRate * durationSec).toInt()
         val pcm = ShortArray(totalSamples)
@@ -490,13 +476,13 @@ class FestiveSoundManager private constructor(private val context: Context) : So
             pcm[i] = (wave * 26000).toInt().coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt()).toShort()
         }
 
-        return pcmToWav(pcm, sampleRate)
+        return pcm
     }
 
     /**
      * Synthesizes a grand celebratory sound with major triad fanfare and golden chime resonance.
      */
-    private fun synthesizeCelebrationSound(sampleRate: Int = 44100): ByteArray {
+    private fun synthesizeCelebrationSound(sampleRate: Int = 44100): ShortArray {
         val durationSec = 3.0f
         val totalSamples = (sampleRate * durationSec).toInt()
         val pcm = ShortArray(totalSamples)
@@ -550,10 +536,10 @@ class FestiveSoundManager private constructor(private val context: Context) : So
             }
         }
 
-        return pcmToWav(pcm, sampleRate)
+        return pcm
     }
 
-    private fun synthesizeSpinSound(sampleRate: Int = 44100, durationSec: Float = 4.6f): ByteArray {
+    private fun synthesizeSpinSound(sampleRate: Int = 44100, durationSec: Float = 4.6f): ShortArray {
         val totalSamples = (sampleRate * durationSec).toInt()
         val pcm = ShortArray(totalSamples)
 
@@ -607,14 +593,14 @@ class FestiveSoundManager private constructor(private val context: Context) : So
             }
         }
 
-        return pcmToWav(pcm, sampleRate)
+        return pcm
     }
 
-    private fun synthesizeWinChime(sampleRate: Int = 44100): ByteArray {
+    private fun synthesizeWinChime(sampleRate: Int = 44100): ShortArray {
         return synthesizeCelebrationSound(sampleRate)
     }
 
-    private fun synthesizeClaimFanfare(sampleRate: Int = 44100): ByteArray {
+    private fun synthesizeClaimFanfare(sampleRate: Int = 44100): ShortArray {
         val durationSec = 2.2f
         val totalSamples = (sampleRate * durationSec).toInt()
         val pcm = ShortArray(totalSamples)
@@ -654,10 +640,10 @@ class FestiveSoundManager private constructor(private val context: Context) : So
             }
         }
 
-        return pcmToWav(pcm, sampleRate)
+        return pcm
     }
 
-    private fun synthesizeTryAgainTone(sampleRate: Int = 44100): ByteArray {
+    private fun synthesizeTryAgainTone(sampleRate: Int = 44100): ShortArray {
         val durationSec = 1.1f
         val totalSamples = (sampleRate * durationSec).toInt()
         val pcm = ShortArray(totalSamples)
@@ -684,10 +670,10 @@ class FestiveSoundManager private constructor(private val context: Context) : So
             }
         }
 
-        return pcmToWav(pcm, sampleRate)
+        return pcm
     }
 
-    private fun synthesizeClickSound(sampleRate: Int = 44100): ByteArray {
+    private fun synthesizeClickSound(sampleRate: Int = 44100): ShortArray {
         val durationSec = 0.04f
         val totalSamples = (sampleRate * durationSec).toInt()
         val pcm = ShortArray(totalSamples)
@@ -700,61 +686,9 @@ class FestiveSoundManager private constructor(private val context: Context) : So
             pcm[i] = (wave * 18000).toInt().coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt()).toShort()
         }
 
-        return pcmToWav(pcm, sampleRate)
-    }
-
-    /**
-     * Converts a 16-bit PCM ShortArray to standard RIFF/WAV format byte array.
-     */
-    private fun pcmToWav(pcm: ShortArray, sampleRate: Int): ByteArray {
-        val numChannels = 1
-        val bitsPerSample = 16
-        val dataSize = pcm.size * 2
-        val totalSize = 36 + dataSize
-
-        val buffer = ByteBuffer.allocate(44 + dataSize).order(ByteOrder.LITTLE_ENDIAN)
-
-        // RIFF chunk descriptor
-        buffer.put('R'.code.toByte())
-        buffer.put('I'.code.toByte())
-        buffer.put('F'.code.toByte())
-        buffer.put('F'.code.toByte())
-        buffer.putInt(totalSize)
-        buffer.put('W'.code.toByte())
-        buffer.put('A'.code.toByte())
-        buffer.put('V'.code.toByte())
-        buffer.put('E'.code.toByte())
-
-        // "fmt " sub-chunk
-        buffer.put('f'.code.toByte())
-        buffer.put('m'.code.toByte())
-        buffer.put('t'.code.toByte())
-        buffer.put(' '.code.toByte())
-        buffer.putInt(16) // SubChunk1Size (16 for PCM)
-        buffer.putShort(1) // AudioFormat (1 for PCM)
-        buffer.putShort(numChannels.toShort())
-        buffer.putInt(sampleRate)
-        buffer.putInt(sampleRate * numChannels * (bitsPerSample / 8)) // ByteRate
-        buffer.putShort((numChannels * (bitsPerSample / 8)).toShort()) // BlockAlign
-        buffer.putShort(bitsPerSample.toShort())
-
-        // "data" sub-chunk
-        buffer.put('d'.code.toByte())
-        buffer.put('a'.code.toByte())
-        buffer.put('t'.code.toByte())
-        buffer.put('a'.code.toByte())
-        buffer.putInt(dataSize)
-
-        // PCM Sample payload
-        for (sample in pcm) {
-            buffer.putShort(sample)
-        }
-
-        return buffer.array()
+        return pcm
     }
 }
 
 val LocalSoundEffectManager = staticCompositionLocalOf<SoundEffectManager?> { null }
 val LocalFestiveSoundManager = LocalSoundEffectManager
-
-

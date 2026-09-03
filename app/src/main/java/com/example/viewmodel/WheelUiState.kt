@@ -62,6 +62,32 @@ data class WheelUiState(
     val primarySelectedDish: Dish
         get() = activeOrderItems.firstOrNull()?.dish ?: selectedDish ?: Dish.MODAK
 
+    /**
+     * Checks if the order consists exclusively of 3 Festival Combos (and no other delicacies).
+     */
+    val isOnlyThreeFestivalCombos: Boolean
+        get() = (dishQuantities[Dish.COMBO_PLATE] ?: 0) == 3 &&
+                dishQuantities.filterKeys { it != Dish.COMBO_PLATE }.values.all { it == 0 }
+
+    /**
+     * Checks if the order consists exclusively of Festival Combos (3 or more, qualifying for lucky spin).
+     */
+    val isOnlyFestivalCombos: Boolean
+        get() = (dishQuantities[Dish.COMBO_PLATE] ?: 0) >= 3 &&
+                dishQuantities.filterKeys { it != Dish.COMBO_PLATE }.values.all { it == 0 }
+
+    /**
+     * Winning dish logic:
+     * If the user selects only 3 Festival Combos, provide only 1 Modak for free.
+     * Otherwise, provides the primary selected dish.
+     */
+    val winningDishForSpin: Dish
+        get() = if (isOnlyThreeFestivalCombos || isOnlyFestivalCombos) {
+            Dish.MODAK
+        } else {
+            primarySelectedDish
+        }
+
     val effectiveUnitPrice: Int
         get() = primarySelectedDish.pricePerUnit
 
@@ -86,5 +112,11 @@ data class WheelUiState(
 
     val khandviFreeCount: Int
         get() = historyList.filter { (it.isFree || it.isWin) && (it.dishName.equals("Khandvi", ignoreCase = true) || it.dishName.equals("Khandavi", ignoreCase = true) || it.dishName.equals("Kothimbir Vadi", ignoreCase = true)) }.sumOf { it.quantity }
+
+    val comboSoldCount: Int
+        get() = historyList.filter { it.isSold && it.dishName?.contains("Combo", ignoreCase = true) == true }.sumOf { it.quantity }
+
+    val comboFreeCount: Int
+        get() = historyList.filter { (it.isFree || it.isWin) && it.dishName?.contains("Combo", ignoreCase = true) == true }.sumOf { it.quantity }
 }
 

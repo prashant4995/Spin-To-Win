@@ -181,8 +181,9 @@ fun PaymentQrCodeCard(
                             }
                         }
                         if (isFreeItem) {
+                            val freeItemLabel = if (dish != null) "🎁 Free 1x ${dish.title} Prize applied!" else "🎁 Free 1x Prize applied!"
                             Text(
-                                text = "🎁 Free 1x Prize applied!",
+                                text = freeItemLabel,
                                 color = GreenSuccess,
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold

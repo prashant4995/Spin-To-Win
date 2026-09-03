@@ -163,7 +163,7 @@ class WheelViewModel(
         val effectiveName = if (state.userName.trim().isEmpty()) "Guest" else state.userName.trim()
         val activeItems = state.activeOrderItems
         val totalQty = state.totalOrderQuantity
-        val effectiveDish = state.primarySelectedDish
+        val effectiveDish = state.winningDishForSpin
 
         if (totalQty > 2) {
             // Quantity > 2 unlocks the 3D Lucky Spin
@@ -254,7 +254,7 @@ class WheelViewModel(
         val state = _uiState.value
         val sector = state.targetSector ?: state.sectors[0]
         val isWin = sector.type == SectorType.WIN
-        val wonDish = if (isWin) state.primarySelectedDish else null
+        val wonDish = if (isWin) state.winningDishForSpin else null
         val guestName = state.userName.trim().ifEmpty { "Festive Guest" }
         val activeItems = state.activeOrderItems
 
@@ -320,8 +320,8 @@ class WheelViewModel(
         val activeItems = state.activeOrderItems
         val guestName = state.userName.trim().ifEmpty { "Festive Customer" }
 
-        var freeDeducted = !isWin
-        var calculatedPayable = 0
+        val isWonDishInOrder = activeItems.any { it.dish == wonDish }
+        var freeDeducted = !isWin || !isWonDishInOrder
 
         viewModelScope.launch {
             activeItems.forEach { item ->
@@ -334,7 +334,6 @@ class WheelViewModel(
 
                 if (paidQty > 0) {
                     val itemTotal = item.unitPrice * paidQty
-                    calculatedPayable += itemTotal
                     val entity = SpinHistoryEntity(
                         userName = guestName,
                         isWin = false,
@@ -357,7 +356,7 @@ class WheelViewModel(
             }
         }
 
-        val wonDishDiscount = if (isWin && wonDish != null) wonDish.pricePerUnit else 0
+        val wonDishDiscount = if (isWin && wonDish != null && isWonDishInOrder) wonDish.pricePerUnit else 0
         val finalPayable = (state.currentTotalAmount - wonDishDiscount).coerceAtLeast(0)
 
         _uiState.update { current ->
@@ -407,7 +406,8 @@ class WheelViewModel(
 
         // If payment was not already explicitly recorded, mark and record it as Payment Done now
         if (!state.isPaymentSuccess && activeItems.isNotEmpty()) {
-            var freeDeducted = !isWin
+            val isWonDishInOrder = activeItems.any { it.dish == wonDish }
+            var freeDeducted = !isWin || !isWonDishInOrder
             viewModelScope.launch {
                 activeItems.forEach { item ->
                     val paidQty = if (!freeDeducted && item.dish == wonDish && item.quantity > 0) {

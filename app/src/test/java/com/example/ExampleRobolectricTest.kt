@@ -55,9 +55,11 @@ class ExampleRobolectricTest {
         assertTrue(viewModel.uiState.value.canProceedToSpin)
 
         // Select Modak with quantity = 1 (Direct Checkout flow)
-        viewModel.selectDish(Dish.MODAK)
-        viewModel.setQuantity(1)
+        viewModel.setDishQuantity(Dish.KHANDVI, 0)
+        viewModel.setDishQuantity(Dish.COMBO_PLATE, 0)
+        viewModel.setDishQuantity(Dish.MODAK, 1)
         assertEquals(Dish.MODAK, viewModel.uiState.value.selectedDish)
+        assertEquals(1, viewModel.uiState.value.totalOrderQuantity)
         assertTrue(viewModel.uiState.value.canProceedToSpin)
 
         // Proceed with quantity 1 -> Direct checkout / payment
@@ -181,6 +183,43 @@ class ExampleRobolectricTest {
         assertEquals(1, winSectors.size)
         val tryAgainSectors = sectors.filter { it.type == SectorType.TRY_AGAIN }
         assertEquals(3, tryAgainSectors.size)
+    }
+
+    @Test
+    fun `test winning dish logic when user selects only 3 festival combos`() = runBlocking {
+        val app = ApplicationProvider.getApplicationContext<android.app.Application>()
+        val viewModel = WheelViewModel(app)
+
+        // Select ONLY 3 Festival Combos (Modak = 0, Khandvi = 0, Combo = 3)
+        viewModel.setDishQuantity(Dish.MODAK, 0)
+        viewModel.setDishQuantity(Dish.KHANDVI, 0)
+        viewModel.setDishQuantity(Dish.COMBO_PLATE, 3)
+
+        val state = viewModel.uiState.value
+        assertEquals(3, state.totalOrderQuantity)
+        assertTrue(state.isOnlyThreeFestivalCombos)
+        assertEquals(Dish.MODAK, state.winningDishForSpin)
+
+        // Proceed to spin -> selectedDish should be Modak (the winning prize)
+        viewModel.proceedToSpin()
+        assertEquals(AppScreen.SpinWheel, viewModel.uiState.value.currentScreen)
+        assertEquals(Dish.MODAK, viewModel.uiState.value.selectedDish)
+
+        // Complete spin animation (sector 0 is WIN)
+        viewModel.onSpinAnimationFinished(0f)
+
+        // Verify result: Won 1 Free Modak!
+        val lastResult = viewModel.uiState.value.lastResult
+        assertNotNull(lastResult)
+        assertTrue(lastResult!!.isWin)
+        assertEquals(Dish.MODAK, lastResult.wonDish)
+
+        // Verify payment QR calculation:
+        // Ordered 3 Combos @ 55 = 165. Won 1 Free Modak.
+        // Customer pays 165 for combos, and receives 1 free Modak.
+        viewModel.recordPaymentViaQr()
+        assertEquals(165, viewModel.uiState.value.lastResult?.amountPaid)
+        assertTrue(viewModel.uiState.value.isPaymentSuccess)
     }
 }
 
