@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -263,7 +264,9 @@ fun SpinWheelScreen(
                 )
             )
     ) {
-        val isTablet = maxWidth >= 720.dp
+        val isLandscape = maxWidth > maxHeight
+        val isLandscapeTablet = isLandscape && maxWidth >= 900.dp
+        val isTablet = maxWidth >= 600.dp
         val tabletSideScrollState = rememberScrollState()
 
         Column(modifier = Modifier.fillMaxSize()) {
@@ -277,7 +280,9 @@ fun SpinWheelScreen(
             // Top Greeting & Header Bar
             Surface(
                 modifier = Modifier
+                    .widthIn(max = 1000.dp)
                     .fillMaxWidth()
+                    .align(Alignment.CenterHorizontally)
                     .padding(horizontal = if (isTablet) 24.dp else 16.dp, vertical = 6.dp)
                     .shadow(8.dp, RoundedCornerShape(18.dp)),
                 shape = RoundedCornerShape(18.dp),
@@ -406,62 +411,151 @@ fun SpinWheelScreen(
                 }
             }
 
-            if (isTablet) {
-                // TABLET 2-PANE RESPONSIVE LAYOUT
-                Row(
+            if (isLandscapeTablet) {
+                // TABLET WIDESCREEN LANDSCAPE (Centered 2-Pane)
+                Box(
                     modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = 24.dp, vertical = 8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(24.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                        .weight(1f)
+                        .fillMaxWidth(),
+                    contentAlignment = Alignment.Center
                 ) {
-                    // Left Pane: Large Centered 3D Wheel
-                    Box(
+                    Row(
                         modifier = Modifier
-                            .weight(1.15f)
-                            .fillMaxHeight(),
-                        contentAlignment = Alignment.Center
+                            .widthIn(max = 1020.dp)
+                            .fillMaxWidth()
+                            .padding(horizontal = 24.dp, vertical = 8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(28.dp, Alignment.CenterHorizontally),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        LuckyWheel(
-                            selectedDish = selectedDish,
-                            sectors = sectors,
-                            currentRotationAngle = physicsState.currentAngle,
-                            isSpinning = isSpinning,
-                            pointerDeflectionAngle = physicsState.pointerDeflectionAngle,
-                            phase = physicsState.phase,
-                            angularVelocity = physicsState.angularVelocityDegPerSec,
-                            landedSectorIndex = physicsState.landedSectorIndex,
-                            landingPulseAlpha = physicsState.landingPulseAlpha,
-                            onSpinClick = triggerSpin,
-                            onSpinComplete = onSpinAnimationFinished,
+                        // Left Pane: Large Centered 3D Wheel
+                        Box(
                             modifier = Modifier
-                                .fillMaxHeight(0.92f)
-                                .aspectRatio(1f)
-                        )
-                    }
+                                .weight(1.1f)
+                                .heightIn(max = 440.dp)
+                                .aspectRatio(1f),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            LuckyWheel(
+                                selectedDish = selectedDish,
+                                sectors = sectors,
+                                currentRotationAngle = physicsState.currentAngle,
+                                isSpinning = isSpinning,
+                                pointerDeflectionAngle = physicsState.pointerDeflectionAngle,
+                                phase = physicsState.phase,
+                                angularVelocity = physicsState.angularVelocityDegPerSec,
+                                landedSectorIndex = physicsState.landedSectorIndex,
+                                landingPulseAlpha = physicsState.landingPulseAlpha,
+                                onSpinClick = triggerSpin,
+                                onSpinComplete = onSpinAnimationFinished,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        }
 
-                    // Right Pane: Physics state, target prize, CTA button, fair-play note
+                        // Right Pane: Centered physics state, target prize, CTA button, fair-play note
+                        Column(
+                            modifier = Modifier
+                                .weight(1f)
+                                .verticalScroll(tabletSideScrollState)
+                                .padding(vertical = 8.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(14.dp)
+                        ) {
+                            SpinPhysicsStatusPill(physicsState = physicsState)
+
+                            selectedDish?.let { dish ->
+                                SpinTargetPrizeCard(dish = dish)
+                            }
+
+                            SpinActionButton(
+                                isSpinning = isSpinning,
+                                onClick = triggerSpin
+                            )
+
+                            // Fair Play / Blessing Card
+                            Surface(
+                                shape = RoundedCornerShape(14.dp),
+                                color = ArtisticMaroonCard,
+                                border = BorderStroke(1.dp, ArtisticAmberSubtle),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 14.dp, vertical = 10.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.Center
+                                ) {
+                                    DiyaLamp(modifier = Modifier.size(24.dp))
+                                    Spacer(modifier = Modifier.width(10.dp))
+                                    Text(
+                                        text = "Authentic 3D Physics • Physical friction, torque & harmonic detent locks",
+                                        color = ArtisticCreamSub,
+                                        fontSize = 11.5.sp,
+                                        fontWeight = FontWeight.Medium,
+                                        textAlign = TextAlign.Center
+                                    )
+                                    Spacer(modifier = Modifier.width(10.dp))
+                                    DiyaLamp(modifier = Modifier.size(24.dp))
+                                }
+                            }
+                        }
+                    }
+                }
+            } else {
+                // PORTRAIT TABLET & PHONE LAYOUT (Centered Vertically and Horizontally)
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth(),
+                    contentAlignment = Alignment.Center
+                ) {
                     Column(
                         modifier = Modifier
-                            .weight(1f)
-                            .fillMaxHeight()
-                            .verticalScroll(tabletSideScrollState)
-                            .padding(vertical = 8.dp),
+                            .widthIn(max = if (isTablet) 600.dp else 520.dp)
+                            .fillMaxWidth()
+                            .verticalScroll(scrollState)
+                            .padding(horizontal = if (isTablet) 24.dp else 16.dp, vertical = 8.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                        verticalArrangement = Arrangement.spacedBy(if (isTablet) 16.dp else 14.dp)
                     ) {
+                        // Real-time Physics Engine Status Pill
                         SpinPhysicsStatusPill(physicsState = physicsState)
 
+                        // 3D Lucky Wheel Centerpiece (Centered in screen)
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(if (isTablet) 390.dp else 330.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            LuckyWheel(
+                                selectedDish = selectedDish,
+                                sectors = sectors,
+                                currentRotationAngle = physicsState.currentAngle,
+                                isSpinning = isSpinning,
+                                pointerDeflectionAngle = physicsState.pointerDeflectionAngle,
+                                phase = physicsState.phase,
+                                angularVelocity = physicsState.angularVelocityDegPerSec,
+                                landedSectorIndex = physicsState.landedSectorIndex,
+                                landingPulseAlpha = physicsState.landingPulseAlpha,
+                                onSpinClick = triggerSpin,
+                                onSpinComplete = onSpinAnimationFinished,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        }
+
+                        // Target Prize Info Card
                         selectedDish?.let { dish ->
                             SpinTargetPrizeCard(dish = dish)
                         }
 
+                        // Big 3D Tactile SPIN CTA Button
                         SpinActionButton(
                             isSpinning = isSpinning,
                             onClick = triggerSpin
                         )
 
-                        // Fair Play / Blessing Card for Tablet
+                        // Fair Play / Blessing Card
                         Surface(
                             shape = RoundedCornerShape(14.dp),
                             color = ArtisticMaroonCard,
@@ -491,54 +585,6 @@ fun SpinWheelScreen(
 
                         Spacer(modifier = Modifier.height(16.dp))
                     }
-                }
-            } else {
-                // PHONE / COMPACT SINGLE-COLUMN LAYOUT (Centered with width constraint)
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .verticalScroll(scrollState)
-                        .padding(horizontal = 16.dp, vertical = 8.dp)
-                        .widthIn(max = 580.dp)
-                        .align(Alignment.CenterHorizontally),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(14.dp)
-                ) {
-                    SpinPhysicsStatusPill(physicsState = physicsState)
-
-                    // 3D Lucky Wheel Centerpiece
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(340.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        LuckyWheel(
-                            selectedDish = selectedDish,
-                            sectors = sectors,
-                            currentRotationAngle = physicsState.currentAngle,
-                            isSpinning = isSpinning,
-                            pointerDeflectionAngle = physicsState.pointerDeflectionAngle,
-                            phase = physicsState.phase,
-                            angularVelocity = physicsState.angularVelocityDegPerSec,
-                            landedSectorIndex = physicsState.landedSectorIndex,
-                            landingPulseAlpha = physicsState.landingPulseAlpha,
-                            onSpinClick = triggerSpin,
-                            onSpinComplete = onSpinAnimationFinished,
-                            modifier = Modifier.fillMaxSize()
-                        )
-                    }
-
-                    selectedDish?.let { dish ->
-                        SpinTargetPrizeCard(dish = dish)
-                    }
-
-                    SpinActionButton(
-                        isSpinning = isSpinning,
-                        onClick = triggerSpin
-                    )
-
-                    Spacer(modifier = Modifier.height(16.dp))
                 }
             }
         }
